@@ -26,12 +26,16 @@ public class DataImpl extends UnicastRemoteObject implements Data {
 
     public void lockMutex() throws RemoteException {
         System.out.println("Locking mutex");
-
+        try {
+            lamport.demande();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public void releaseMutex() throws RemoteException {
         System.out.println("Releasing mutex");
-
+        lamport.fin();
     }
 
     public void setValue(int value) throws RemoteException {

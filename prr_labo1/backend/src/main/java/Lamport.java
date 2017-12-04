@@ -5,38 +5,12 @@ import java.util.ArrayList;
  * Date : 16.11.17
  */
 
-public class Lamport implements Runnable {
-    enum TYPE {REQUETE, QUITTANCE, LIBERE}
-
-    class Request {
-        TYPE type;
-        long estampille;
-        int originSite;
-
-        public Request(TYPE type, long estampille, int originSite) {
-            this.estampille = estampille;
-            this.type = type;
-            this.originSite = originSite;
-        }
-
-        public long getEstampille() {
-            return estampille;
-        }
-
-        public int getOriginSite() {
-            return originSite;
-        }
-
-        public TYPE getType() {
-            return type;
-        }
-    }
-
+public class Lamport {
     private int numSite;
     private int nbSite;
     private long clockLogical;
     private boolean scAccorde;
-    private ArrayList<Request> requestFile;
+    private ArrayList<Message> messageFile;
     private ArrayList<Integer> siteAdressFile;
 
     public Lamport(int numSite, int nbSite) {
@@ -44,90 +18,131 @@ public class Lamport implements Runnable {
         this.nbSite = nbSite;
         this.clockLogical = 0;
         this.scAccorde = false;
-        this.requestFile = new ArrayList(nbSite);
-        this.siteAdressFile = new ArrayList<Integer>(nbSite);
-        initRequestFile();
+        this.messageFile = new ArrayList(this.nbSite);
+        this.siteAdressFile = new ArrayList<Integer>(this.nbSite);
+        initMessageFile();
         initSiteAdressFile();
     }
 
-    private void initRequestFile(){
-        for(int i = 0; i < requestFile.size(); i++){
-            requestFile.add(i, new Request(TYPE.LIBERE, 0, i));
+    /**
+     * Initialisation de la file des messages des N sites
+     */
+    private void initMessageFile() {
+        for (int i = 0; i < messageFile.size(); i++) {
+            messageFile.add(i, new Message(TYPE.LIBERE, 0, i));
         }
     }
 
+    /**
+     * Initialisation des adresses des sites
+     */
     private void initSiteAdressFile() {
         for (int i = 0; i < siteAdressFile.size(); i++) {
             siteAdressFile.add(i, i);
         }
     }
 
-    public void run() {
-        // Gestion des 4 rendez-vous
 
-    }
-
-    public boolean permission(int me) {
+    /**
+     * Retourne si le site actuel peut accéder à la section critique
+     *
+     * @param me numéro du site
+     * @return
+     */
+    private boolean permission(int me) {
         boolean accord = true;
-        for(int i = 0; i < siteAdressFile.size(); i++){
-            if(i != me){
-                accord = (requestFile.get(me).getEstampille() < requestFile.get(i).getEstampille() ) ||
-                        ( requestFile.get(me).getEstampille() == requestFile.get(i).getEstampille() && me < i) ;
+        for (int i = 0; i < siteAdressFile.size(); i++) {
+            if (i != me) {
+                accord = (messageFile.get(me).getEstampille() < messageFile.get(i).getEstampille()) ||
+                        (messageFile.get(me).getEstampille() == messageFile.get(i).getEstampille() && me < i);
             }
         }
         return accord;
     }
 
-    public void envoi(Request req, int dest) {
+    /**
+     * Envoi un message "msg" à un site "dest"
+     *
+     * @param msg
+     * @param dest
+     */
+    synchronized
+    public void envoi(Message msg, int dest) {
         // Envoyer au site dest, la requete et mon num de site
+        // Utiliser RMI pour faire le lien entre site numéro i et son adresse
     }
 
-    public void demande(){
+    /**
+     * Demande d'entrer en section critique
+     *
+     * @throws InterruptedException
+     */
+    synchronized
+    public void demande() throws InterruptedException {
         // Maj horloge interne
         this.clockLogical += 1;
         // Enregistre la requête dans sa liste
-        Request req = new Request(TYPE.REQUETE, clockLogical, numSite);
-        requestFile.add(this.numSite, req);
+        Message req = new Message(TYPE.REQUETE, clockLogical, numSite);
+        messageFile.add(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
-        for(int i = 0; i < siteAdressFile.size(); i++){
-            if(i != numSite){
+        for (int i = 0; i < siteAdressFile.size(); i++) {
+            if (i != numSite) {
                 envoi(req, i);
             }
         }
-        scAccorde = permission(numSite);
+
+        // Attente si SC prise ailleurs
+        while (!(scAccorde = permission(numSite))) {
+            wait();
+        }
     }
 
+    /**
+     * Fin de la section critique, libère l'accès.
+     */
+    synchronized
     public void fin() {
         // Enregistre la requête dans sa liste
-        Request req = new Request(TYPE.LIBERE, clockLogical, numSite);
-        requestFile.add(this.numSite, req);
+        Message req = new Message(TYPE.LIBERE, clockLogical, numSite);
+        messageFile.add(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
-        for(int i = 0; i < siteAdressFile.size(); i ++){
-            if(i != numSite){
+        for (int i = 0; i < siteAdressFile.size(); i++) {
+            if (i != numSite) {
                 envoi(req, i);
             }
         }
         scAccorde = false;
     }
 
-    public void recoit(Request req) {
+    /**
+     * Traitement des messages reçus du type REQUETE, LIBERE et QUITTANCE
+     *
+     * @param msg message à analyser
+     */
+    public void recoit(Message msg) {
         // Maj de l'horloge logique
-        clockLogical = Math.max(clockLogical, req.getEstampille()) + 1;
-        switch (req.getType()) {
+        clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
+        switch (msg.getType()) {
             case REQUETE:
-                requestFile.add(req.getOriginSite(), req);
-                envoi(new Request(TYPE.QUITTANCE,clockLogical,numSite),req.getOriginSite());
-                 break;
+                messageFile.add(msg.getOriginSite(), msg);
+                envoi(new Message(TYPE.QUITTANCE, clockLogical, numSite), msg.getOriginSite());
+                break;
             case LIBERE:
-                requestFile.add(req.getOriginSite(), req);
+                messageFile.add(msg.getOriginSite(), msg);
                 break;
             case QUITTANCE:
-                if(requestFile.get(req.originSite).getType() != TYPE.REQUETE){
-                    requestFile.add(req.getOriginSite(),req);
+                if (messageFile.get(msg.originSite).getType() != TYPE.REQUETE) {
+                    messageFile.add(msg.getOriginSite(), msg);
                 }
                 break;
         }
-        scAccorde = (requestFile.get(numSite).getType() == TYPE.REQUETE) && permission(numSite);
+        // Vérifie l'accès à la section critique
+        scAccorde = (messageFile.get(numSite).getType() == TYPE.REQUETE) && permission(numSite);
+
+        // On a la permission et on veut rentré en SC réveiller le thread en attente
+        if (scAccorde) {
+            notify();
+        }
     }
 
 }
