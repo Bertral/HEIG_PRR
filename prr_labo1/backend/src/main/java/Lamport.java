@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Project : prr_labo1
@@ -38,42 +37,43 @@ public class Lamport  implements Runnable {
     private int nbSite;
     private long clockLogical;
     private boolean scAccorde;
-    private ArrayList<Request> tFile;
-    private ArrayList<Integer> file;
+    private ArrayList<Request> requestFile;
+    private ArrayList<Integer> siteAdressFile;
 
     public Lamport(int numSite, int nbSite) {
         this.numSite = numSite;
         this.nbSite= nbSite;
         this.clockLogical = 0;
         this.scAccorde = false;
-        this.tFile = new ArrayList(nbSite);
-        this.file = new ArrayList<Integer>(nbSite);
-        initTFile();
-        initFile();
+        this.requestFile = new ArrayList(nbSite);
+        this.siteAdressFile = new ArrayList<Integer>(nbSite);
+        initRequestFile();
+        initSiteAdressFile();
     }
 
-    private void initTFile(){
-        for(int i = 0; i < tFile.size(); i++){
-            tFile.add(i, new Request(TYPE.LIBERE, 0, i));
+    private void initRequestFile(){
+        for(int i = 0; i < requestFile.size(); i++){
+            requestFile.add(i, new Request(TYPE.LIBERE, 0, i));
         }
     }
 
-    private void initFile(){
-        for(int i = 0; i < file.size(); i++){
-            file.add(i,i);
+    private void initSiteAdressFile(){
+        for(int i = 0; i < siteAdressFile.size(); i++){
+            siteAdressFile.add(i,i);
         }
     }
 
     public void run() {
         // Gestion des 4 rendez-vous
+
     }
 
     public boolean permission(int me){
         boolean accord = true;
-        for(int i = 0; i < file.size(); i++){
+        for(int i = 0; i < siteAdressFile.size(); i++){
             if(i != me){
-                accord = (tFile.get(me).getEstampille() < tFile.get(i).getEstampille() ) ||
-                        ( tFile.get(me).getEstampille() == tFile.get(i).getEstampille() && me < i) ;
+                accord = (requestFile.get(me).getEstampille() < requestFile.get(i).getEstampille() ) ||
+                        ( requestFile.get(me).getEstampille() == requestFile.get(i).getEstampille() && me < i) ;
             }
         }
         return accord;
@@ -83,14 +83,18 @@ public class Lamport  implements Runnable {
         // Envoyer au site dest, la requete et mon num de site
     }
 
+    public void attente(){
+
+    }
+
     public void demande(){
         // Maj horloge interne
         this.clockLogical += 1;
         // Enregistre la requête dans sa liste
         Request req = new Request(TYPE.REQUETE, clockLogical, numSite);
-        tFile.add(this.numSite, req);
+        requestFile.add(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
-        for(int i = 0; i < file.size(); i++){
+        for(int i = 0; i < siteAdressFile.size(); i++){
             if(i != numSite){
                 envoi(req, i);
             }
@@ -101,9 +105,9 @@ public class Lamport  implements Runnable {
     public void fin(){
         // Enregistre la requête dans sa liste
         Request req = new Request(TYPE.LIBERE, clockLogical, numSite);
-        tFile.add(this.numSite, req);
+        requestFile.add(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
-        for(int i = 0; i < file.size(); i ++){
+        for(int i = 0; i < siteAdressFile.size(); i ++){
             if(i != numSite){
                 envoi(req, i);
             }
@@ -116,19 +120,25 @@ public class Lamport  implements Runnable {
         clockLogical = Math.max(clockLogical, req.getEstampille())+1;
         switch (req.getType()){
             case REQUETE:
-                tFile.add(req.getOriginSite(), req);
+                requestFile.add(req.getOriginSite(), req);
                 envoi(new Request(TYPE.QUITTANCE,clockLogical,numSite),req.getOriginSite());
                  break;
             case LIBERE:
-                tFile.add(req.getOriginSite(), req);
+                requestFile.add(req.getOriginSite(), req);
                 break;
             case QUITTANCE:
-                if(tFile.get(req.originSite).getType() != TYPE.REQUETE){
-                    tFile.add(req.getOriginSite(),req);
+                if(requestFile.get(req.originSite).getType() != TYPE.REQUETE){
+                    requestFile.add(req.getOriginSite(),req);
                 }
                 break;
         }
-        scAccorde = (tFile.get(numSite).getType() == TYPE.REQUETE) && permission(numSite);
+        scAccorde = (requestFile.get(numSite).getType() == TYPE.REQUETE) && permission(numSite);
     }
+
+    /**
+     * Les rendez-vous
+     */
+
+
 
 }
