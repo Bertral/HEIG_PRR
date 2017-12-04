@@ -2,36 +2,35 @@ import java.util.ArrayList;
 
 /**
  * Project : prr_labo1
- * Author(s) : Antoine Friant
  * Date : 16.11.17
  */
-enum TYPE{REQUETE,QUITTANCE, LIBERE}
 
-class Request{
-    TYPE type;
-    long estampille;
-    int originSite;
+public class Lamport implements Runnable {
+    enum TYPE {REQUETE, QUITTANCE, LIBERE}
 
-    public Request(TYPE type, long estampille, int originSite){
-        this.estampille = estampille;
-        this.type = type;
-        this.originSite = originSite;
+    class Request {
+        TYPE type;
+        long estampille;
+        int originSite;
+
+        public Request(TYPE type, long estampille, int originSite) {
+            this.estampille = estampille;
+            this.type = type;
+            this.originSite = originSite;
+        }
+
+        public long getEstampille() {
+            return estampille;
+        }
+
+        public int getOriginSite() {
+            return originSite;
+        }
+
+        public TYPE getType() {
+            return type;
+        }
     }
-
-    public long getEstampille() {
-        return estampille;
-    }
-
-    public int getOriginSite() {
-        return originSite;
-    }
-
-    public TYPE getType() {
-        return type;
-    }
-}
-
-public class Lamport  implements Runnable {
 
     private int numSite;
     private int nbSite;
@@ -42,7 +41,7 @@ public class Lamport  implements Runnable {
 
     public Lamport(int numSite, int nbSite) {
         this.numSite = numSite;
-        this.nbSite= nbSite;
+        this.nbSite = nbSite;
         this.clockLogical = 0;
         this.scAccorde = false;
         this.requestFile = new ArrayList(nbSite);
@@ -57,9 +56,9 @@ public class Lamport  implements Runnable {
         }
     }
 
-    private void initSiteAdressFile(){
-        for(int i = 0; i < siteAdressFile.size(); i++){
-            siteAdressFile.add(i,i);
+    private void initSiteAdressFile() {
+        for (int i = 0; i < siteAdressFile.size(); i++) {
+            siteAdressFile.add(i, i);
         }
     }
 
@@ -68,7 +67,7 @@ public class Lamport  implements Runnable {
 
     }
 
-    public boolean permission(int me){
+    public boolean permission(int me) {
         boolean accord = true;
         for(int i = 0; i < siteAdressFile.size(); i++){
             if(i != me){
@@ -79,12 +78,8 @@ public class Lamport  implements Runnable {
         return accord;
     }
 
-    public void envoi(Request req, int dest){
+    public void envoi(Request req, int dest) {
         // Envoyer au site dest, la requete et mon num de site
-    }
-
-    public void attente(){
-
     }
 
     public void demande(){
@@ -102,7 +97,7 @@ public class Lamport  implements Runnable {
         scAccorde = permission(numSite);
     }
 
-    public void fin(){
+    public void fin() {
         // Enregistre la requête dans sa liste
         Request req = new Request(TYPE.LIBERE, clockLogical, numSite);
         requestFile.add(this.numSite, req);
@@ -115,10 +110,10 @@ public class Lamport  implements Runnable {
         scAccorde = false;
     }
 
-    public void recoit(Request req){
+    public void recoit(Request req) {
         // Maj de l'horloge logique
-        clockLogical = Math.max(clockLogical, req.getEstampille())+1;
-        switch (req.getType()){
+        clockLogical = Math.max(clockLogical, req.getEstampille()) + 1;
+        switch (req.getType()) {
             case REQUETE:
                 requestFile.add(req.getOriginSite(), req);
                 envoi(new Request(TYPE.QUITTANCE,clockLogical,numSite),req.getOriginSite());
@@ -134,11 +129,5 @@ public class Lamport  implements Runnable {
         }
         scAccorde = (requestFile.get(numSite).getType() == TYPE.REQUETE) && permission(numSite);
     }
-
-    /**
-     * Les rendez-vous
-     */
-
-
 
 }

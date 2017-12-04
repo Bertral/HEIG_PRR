@@ -9,13 +9,33 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     //private static final long serialVersionUID = 2674880711467464646L;
 
     private int value = 0;
+    private Lamport lamport;
 
     protected DataImpl() throws RemoteException {
         super();
     }
 
+    public void setLamport(Lamport lamport) {
+        this.lamport = lamport;
+    }
+
     public int getValue() throws RemoteException {
         System.out.println("Sending value : " + value);
-        return value++;
+        return value;
+    }
+
+    public void lockMutex() throws RemoteException {
+        System.out.println("Locking mutex");
+
+    }
+
+    public void releaseMutex() throws RemoteException {
+        System.out.println("Releasing mutex");
+
+    }
+
+    public void setValue(int value) throws RemoteException {
+        System.out.println("Setting value : " + value);
+        this.value = value;
     }
 }
