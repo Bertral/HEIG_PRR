@@ -23,7 +23,7 @@ public class Main {
 
             // instanciation de la donnée
             DataImpl dataImpl = new DataImpl();
-            dataImpl.setLamport(new Lamport(Integer.parseInt(args[0]), Integer.parseInt(args[1])));
+            dataImpl.init(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
 
             // définition de l'adresse de la donnée
             String url = "rmi://" + InetAddress.getLocalHost().getHostAddress() + "/Data" + args[0];
