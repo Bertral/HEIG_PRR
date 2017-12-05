@@ -108,7 +108,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         try {
             // récupération de la liste des serveurs
             Properties properties = new Properties();
-            properties.load(Main.class.getClassLoader().getResourceAsStream("sites.properties"));
+            properties.load(this.getClass().getClassLoader().getResourceAsStream("sites.properties"));
+
             Remote r = Naming.lookup(properties.getProperty("" + dest));
             Data data = (Data) r;
             data.sendMessage(msg);
@@ -136,6 +137,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             }
         }
         scAccorde = permission(numSite);
+        System.out.println(scAccorde);
         if (!scAccorde) {
             wait();
         }
