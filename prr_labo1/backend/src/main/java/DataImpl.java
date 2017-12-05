@@ -17,6 +17,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     private boolean scAccorde;
     private ArrayList<Message> messageFile;
     private ArrayList<Integer> siteAdressFile;
+    private boolean waitClient = false;
 
     protected DataImpl() throws RemoteException {
         super();
@@ -82,6 +83,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @return
      */
     private boolean permission(int me) {
+        System.out.println("entry permission");
         boolean accord = true;
         for (int i = 0; i < siteAdressFile.size() - 1; i++) {
             if (i != me) {
@@ -89,6 +91,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
                         || (messageFile.get(me).getEstampille() == messageFile.get(i).getEstampille() && me < i)));
             }
         }
+        System.out.println("end permission");
         return accord;
     }
 
@@ -99,6 +102,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @param dest
      */
     private void envoi(Message msg, int dest) {
+        System.out.println("entry envoi");
         // Envoyer au site dest, la requete et mon num de site
         // Utiliser RMI pour faire le lien entre site numéro i et son adresse
         try {
@@ -111,7 +115,9 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             data.recoit(msg);
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("error envoi");
         }
+        System.out.println("end envoi");
     }
 
     /**
@@ -121,13 +127,14 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      */
     synchronized
     private void demande() throws InterruptedException {
+        System.out.println("entry demande");
         // Maj horloge interne
         this.clockLogical += 1;
         // Enregistre la requête dans sa liste
         Message req = new Message(Message.TYPE.REQUETE, clockLogical, numSite);
         messageFile.set(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
-        for (int i = 0; i < siteAdressFile.size(); i++) {
+        for (int i = 0; i < siteAdressFile.size()-1; i++) {
             if (i != numSite) {
                 envoi(req, i);
             }
@@ -135,8 +142,11 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         scAccorde = permission(numSite);
         System.out.println(scAccorde);
         if (!scAccorde) {
+            System.out.println("wait sc");
+            this.waitClient = true;
             wait();
         }
+        System.out.println("acces sc");
     }
 
     /**
@@ -144,6 +154,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      */
     synchronized
     private void fin() {
+        System.out.println("entry fin");
         // Enregistre la requête dans sa liste
         Message req = new MessageLibere(Message.TYPE.LIBERE, clockLogical, numSite, value);
         messageFile.set(this.numSite, req);
@@ -154,6 +165,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             }
         }
         scAccorde = false;
+        System.out.println("end fin");
     }
 
     /**
@@ -161,8 +173,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      *
      * @param msg message à analyser
      */
-    synchronized
     public void recoit(Message msg) {
+        System.out.println("entry recoit");
         // Maj de l'horloge logique
         clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
         switch (msg.getType()) {
@@ -187,8 +199,11 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         // Vérifie l'accès à la section critique
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
 
-        if (scAccorde){
+        if (scAccorde && waitClient){
+            System.out.println("relache client");
+            waitClient = false;
             notify();
         }
+        System.out.println("end recoit");
     }
 }
