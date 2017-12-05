@@ -42,4 +42,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         System.out.println("Setting value : " + value);
         this.value = value;
     }
+
+    public void sendMessage(Message msg) {
+        lamport.recoit(msg);
+    }
 }

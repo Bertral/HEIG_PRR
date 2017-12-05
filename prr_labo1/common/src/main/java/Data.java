@@ -9,4 +9,5 @@ public interface Data extends Remote {
     public void lockMutex() throws RemoteException; // appel bloquant
     public void releaseMutex() throws RemoteException;
     public void setValue(int value) throws RemoteException;
+    public void sendMessage(Message msg) throws RemoteException;
 }

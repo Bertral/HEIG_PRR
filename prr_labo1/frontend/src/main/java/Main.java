@@ -23,15 +23,15 @@ public class Main {
             while (true) {
                 String input = sc.nextLine();
 
-                if (input.contains("req")) {
+                if (input.contains("set")) {
                     System.out.println("Locking mutex ...");
                     data.lockMutex();
                     System.out.println("Mutex locked");
-                } else if (input.contains("set")) {
+
                     System.out.print("Enter new global value (integer only) : ");
                     data.setValue(sc.nextInt());
                     System.out.println("New value set");
-                } else if (input.contains("rel")) {
+
                     System.out.println("Releasing mutex ...");
                     data.releaseMutex();
                     System.out.println("Mutex released");
@@ -50,9 +50,7 @@ public class Main {
 
     private static void displayCommands() {
         System.out.println("===== Commands ====");
-        System.out.println("req : request mutex");
         System.out.println("set : set new value");
-        System.out.println("rel : release mutex");
         System.out.println("get : display value");
         System.out.print("> ");
     }

@@ -1,3 +1,8 @@
+import java.net.MalformedURLException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -73,6 +78,13 @@ public class Lamport {
     public void envoi(Message msg, int dest) {
         // Envoyer au site dest, la requete et mon num de site
         // Utiliser RMI pour faire le lien entre site numéro i et son adresse
+        try {
+            Remote r = Naming.lookup("rmi://localhost/Data" + dest);
+            Data data = (Data) r;
+            data.sendMessage(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
