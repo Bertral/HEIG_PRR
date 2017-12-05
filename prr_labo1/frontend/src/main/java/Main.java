@@ -1,4 +1,7 @@
+import java.io.*;
+import java.net.URI;
 import java.rmi.*;
+import java.util.Properties;
 import java.util.Scanner;
 
 
@@ -12,9 +15,20 @@ public class Main {
             System.out.println("Argument invalide : [numéro du site]");
         }
 
+        // récupération de la liste des serveurs
+        Properties properties = new Properties();
+        try {
+            properties.load(Main.class.getClassLoader().getResourceAsStream("sites.properties"));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+
         // connexion au serveur RMI
         try {
-            Remote r = Naming.lookup("rmi://localhost/Data" + args[0]);
+            System.out.println("Connecting to " + properties.getProperty(args[0]));
+            Remote r = Naming.lookup(properties.getProperty(args[0]));
             Data data = (Data) r;
 
             // boucle d'exécution
