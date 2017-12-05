@@ -102,7 +102,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @param msg
      * @param dest
      */
-    public void envoi(Message msg, int dest) {
+    private void envoi(Message msg, int dest) {
         // Envoyer au site dest, la requete et mon num de site
         // Utiliser RMI pour faire le lien entre site numéro i et son adresse
         try {
@@ -124,7 +124,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @throws InterruptedException
      */
     synchronized
-    public void demande() throws InterruptedException {
+    private void demande() throws InterruptedException {
         // Maj horloge interne
         this.clockLogical += 1;
         // Enregistre la requête dans sa liste
@@ -147,7 +147,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * Fin de la section critique, libère l'accès.
      */
     synchronized
-    public void fin() {
+    private void fin() {
         // Enregistre la requête dans sa liste
         Message req = new Message(Message.TYPE.LIBERE, clockLogical, numSite);
         messageFile.set(this.numSite, req);
@@ -166,7 +166,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @param msg message à analyser
      */
     synchronized
-    public void recoit(Message msg) {
+    private void recoit(Message msg) {
         // Maj de l'horloge logique
         clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
         switch (msg.getType()) {
@@ -185,6 +185,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         }
         // Vérifie l'accès à la section critique
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
-        notify();
+        if(scAccorde) {
+            notify();
+        }
     }
 }
