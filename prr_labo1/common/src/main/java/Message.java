@@ -5,19 +5,11 @@ public class Message {
     TYPE type;
     long estampille;
     int originSite;
-    int newValue;
 
     public Message(TYPE type, long estampille, int originSite) {
         this.estampille = estampille;
         this.type = type;
         this.originSite = originSite;
-    }
-
-    public Message(TYPE type, long estampille, int originSite, int newValue){
-        this.estampille = estampille;
-        this.type = type;
-        this.originSite = originSite;
-        this.newValue = newValue;
     }
 
     public long getEstampille() {
@@ -30,16 +22,5 @@ public class Message {
 
     public TYPE getType() {
         return type;
-    }
-
-    /**
-     * Retourne la nouvelle valeur pour un message de TYPE libère sinon renvoi -1
-     * @return
-     */
-    public int getNewValue() throws IllegalAccessException{
-        if(type != TYPE.LIBERE) {
-            throw new IllegalAccessException("Message not type LIBERE");
-        }
-        return newValue;
     }
 }

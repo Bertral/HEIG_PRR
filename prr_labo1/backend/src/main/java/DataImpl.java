@@ -147,7 +147,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     synchronized
     private void fin() {
         // Enregistre la requête dans sa liste
-        Message req = new Message(Message.TYPE.LIBERE, clockLogical, numSite);
+        Message req = new MessageLibere(Message.TYPE.LIBERE, clockLogical, numSite, value);
         messageFile.set(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size() - 1; i++) {
@@ -173,12 +173,10 @@ public class DataImpl extends UnicastRemoteObject implements Data {
                 envoi(new Message(Message.TYPE.QUITTANCE, clockLogical, numSite), msg.getOriginSite());
                 break;
             case LIBERE:
-                messageFile.set(msg.getOriginSite(), msg);
                 try {
-                    setValue(msg.getNewValue());
+                    messageFile.set(msg.getOriginSite(), msg);
+                    setValue(((MessageLibere) msg).getNewValue());
                 } catch (RemoteException e) {
-                    e.printStackTrace();
-                } catch (IllegalAccessException e){
                     e.printStackTrace();
                 }
                 break;
@@ -191,7 +189,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         // Vérifie l'accès à la section critique
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
 
-        if(scAccorde) {
+        if (scAccorde){
             notify();
         }
     }
