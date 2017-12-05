@@ -1,5 +1,4 @@
 import java.io.*;
-import java.net.URI;
 import java.rmi.*;
 import java.util.Properties;
 import java.util.Scanner;

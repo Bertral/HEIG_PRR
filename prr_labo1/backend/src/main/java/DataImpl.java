@@ -45,6 +45,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             demande();
         } catch (InterruptedException e) {
             e.printStackTrace();
+            throw new RemoteException(e.getMessage());
         }
     }
 

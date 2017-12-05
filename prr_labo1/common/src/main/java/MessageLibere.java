@@ -1,4 +1,6 @@
-public class MessageLibere extends Message {
+import java.io.Serializable;
+
+public class MessageLibere extends Message implements Serializable {
     private int newValue;
 
     public MessageLibere(TYPE type, long estampille, int originSite, int newValue) {
