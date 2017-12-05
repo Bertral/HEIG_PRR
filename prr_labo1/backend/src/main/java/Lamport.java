@@ -1,4 +1,6 @@
 import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Project : prr_labo1
@@ -12,6 +14,9 @@ public class Lamport {
     private boolean scAccorde;
     private ArrayList<Message> messageFile;
     private ArrayList<Integer> siteAdressFile;
+    // Mutex
+    private Lock waitDemande = new ReentrantLock();
+    private Lock waitSC = new ReentrantLock();
 
     public Lamport(int numSite, int nbSite) {
         this.numSite = numSite;
@@ -65,7 +70,6 @@ public class Lamport {
      * @param msg
      * @param dest
      */
-    synchronized
     public void envoi(Message msg, int dest) {
         // Envoyer au site dest, la requete et mon num de site
         // Utiliser RMI pour faire le lien entre site numéro i et son adresse
@@ -76,8 +80,10 @@ public class Lamport {
      *
      * @throws InterruptedException
      */
-    synchronized
     public void demande() throws InterruptedException {
+        // Demande d'accès, 1 seul à la fois
+        this.waitDemande.lock();
+
         // Maj horloge interne
         this.clockLogical += 1;
         // Enregistre la requête dans sa liste
@@ -89,17 +95,17 @@ public class Lamport {
                 envoi(req, i);
             }
         }
+        scAccorde = permission(numSite);
 
-        // Attente si SC prise ailleurs
-        while (!(scAccorde = permission(numSite))) {
-            wait();
+        // Attente d'autorisation à la section critique
+        if(!scAccorde){
+            this.waitSC.lock();
         }
     }
 
     /**
      * Fin de la section critique, libère l'accès.
      */
-    synchronized
     public void fin() {
         // Enregistre la requête dans sa liste
         Message req = new Message(Message.TYPE.LIBERE, clockLogical, numSite);
@@ -111,6 +117,8 @@ public class Lamport {
             }
         }
         scAccorde = false;
+        // Relache une éventuelle demande
+        this.waitDemande.unlock();
     }
 
     /**
@@ -138,9 +146,9 @@ public class Lamport {
         // Vérifie l'accès à la section critique
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
 
-        // On a la permission et on veut rentré en SC réveiller le thread en attente
-        if (scAccorde) {
-            notify();
+        // Libère une éventuelle attente d'accès
+        if(scAccorde){
+            this.waitSC.unlock();
         }
     }
 
