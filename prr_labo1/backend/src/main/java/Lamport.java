@@ -19,9 +19,6 @@ public class Lamport {
     private boolean scAccorde;
     private ArrayList<Message> messageFile;
     private ArrayList<Integer> siteAdressFile;
-    // Mutex
-    private Lock waitDemande = new ReentrantLock();
-    private Lock waitSC = new ReentrantLock();
 
     public Lamport(int numSite, int nbSite) {
         this.numSite = numSite;
@@ -60,10 +57,10 @@ public class Lamport {
      */
     private boolean permission(int me) {
         boolean accord = true;
-        for (int i = 0; i < siteAdressFile.size(); i++) {
+        for (int i = 0; i < siteAdressFile.size() - 1; i++) {
             if (i != me) {
-                accord = (messageFile.get(me).getEstampille() < messageFile.get(i).getEstampille()) ||
-                        (messageFile.get(me).getEstampille() == messageFile.get(i).getEstampille() && me < i);
+                accord = accord && ((messageFile.get(me).getEstampille() < messageFile.get(i).getEstampille()
+                        || (messageFile.get(me).getEstampille() == messageFile.get(i).getEstampille() && me < i)));
             }
         }
         return accord;
@@ -92,10 +89,8 @@ public class Lamport {
      *
      * @throws InterruptedException
      */
+    synchronized
     public void demande() throws InterruptedException {
-        // Demande d'accès, 1 seul à la fois
-        this.waitDemande.lock();
-
         // Maj horloge interne
         this.clockLogical += 1;
         // Enregistre la requête dans sa liste
@@ -108,29 +103,27 @@ public class Lamport {
             }
         }
         scAccorde = permission(numSite);
-
-        // Attente d'autorisation à la section critique
-        if(!scAccorde){
-            this.waitSC.lock();
+        System.out.println(scAccorde);
+        if (!scAccorde) {
+            wait();
         }
     }
 
     /**
      * Fin de la section critique, libère l'accès.
      */
+    synchronized
     public void fin() {
         // Enregistre la requête dans sa liste
         Message req = new Message(Message.TYPE.LIBERE, clockLogical, numSite);
         messageFile.set(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
-        for (int i = 0; i < siteAdressFile.size(); i++) {
+        for (int i = 0; i < siteAdressFile.size() - 1; i++) {
             if (i != numSite) {
                 envoi(req, i);
             }
         }
         scAccorde = false;
-        // Relache une éventuelle demande
-        this.waitDemande.unlock();
     }
 
     /**
@@ -138,6 +131,7 @@ public class Lamport {
      *
      * @param msg message à analyser
      */
+    synchronized
     public void recoit(Message msg) {
         // Maj de l'horloge logique
         clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
@@ -157,11 +151,7 @@ public class Lamport {
         }
         // Vérifie l'accès à la section critique
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
-
-        // Libère une éventuelle attente d'accès
-        if(scAccorde){
-            this.waitSC.unlock();
-        }
+        notify();
     }
 
 }
