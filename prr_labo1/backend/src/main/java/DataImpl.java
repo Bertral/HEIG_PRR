@@ -109,7 +109,6 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             // récupération de la liste des serveurs
             Properties properties = new Properties();
             properties.load(Main.class.getClassLoader().getResourceAsStream("sites.properties"));
-
             Remote r = Naming.lookup(properties.getProperty("" + dest));
             Data data = (Data) r;
             data.sendMessage(msg);
@@ -137,7 +136,6 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             }
         }
         scAccorde = permission(numSite);
-        System.out.println(scAccorde);
         if (!scAccorde) {
             wait();
         }
@@ -176,6 +174,13 @@ public class DataImpl extends UnicastRemoteObject implements Data {
                 break;
             case LIBERE:
                 messageFile.set(msg.getOriginSite(), msg);
+                try {
+                    setValue(msg.getNewValue());
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e){
+                    e.printStackTrace();
+                }
                 break;
             case QUITTANCE:
                 if (messageFile.get(msg.originSite).getType() != Message.TYPE.REQUETE) {
@@ -185,6 +190,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         }
         // Vérifie l'accès à la section critique
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
+
         if(scAccorde) {
             notify();
         }

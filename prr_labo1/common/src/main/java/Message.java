@@ -36,10 +36,10 @@ public class Message {
      * Retourne la nouvelle valeur pour un message de TYPE libère sinon renvoi -1
      * @return
      */
-    public int getNewValue() {
-        if(type == TYPE.LIBERE) {
-            return newValue;
+    public int getNewValue() throws IllegalAccessException{
+        if(type != TYPE.LIBERE) {
+            throw new IllegalAccessException("Message not type LIBERE");
         }
-        return -1;
+        return newValue;
     }
 }
