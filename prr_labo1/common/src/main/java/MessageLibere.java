@@ -5,7 +5,7 @@ public class MessageLibere extends Message {
         super(type, estampille, originSite);
         this.newValue = newValue;
     }
-    
+
     public int getNewValue() {
         return newValue;
     }
