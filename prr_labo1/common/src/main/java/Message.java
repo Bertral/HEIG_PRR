@@ -1,6 +1,6 @@
-import java.awt.*;
+import java.io.Serializable;
 
-public class Message {
+public class Message implements Serializable {
     public enum TYPE {REQUETE, QUITTANCE, LIBERE}
     TYPE type;
     long estampille;
