@@ -57,10 +57,6 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         this.value = value;
     }
 
-    public void sendMessage(Message msg) {
-        recoit(msg);
-    }
-
     /**
      * Initialisation de la file des messages des N sites
      */
@@ -112,7 +108,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
 
             Remote r = Naming.lookup(properties.getProperty("" + dest));
             Data data = (Data) r;
-            data.sendMessage(msg);
+            data.recoit(msg);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -166,7 +162,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @param msg message à analyser
      */
     synchronized
-    private void recoit(Message msg) {
+    public void recoit(Message msg) {
         // Maj de l'horloge logique
         clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
         switch (msg.getType()) {
