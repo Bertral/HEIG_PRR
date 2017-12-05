@@ -113,13 +113,14 @@ public class Lamport {
      * Fin de la section critique, libère l'accès.
      */
     synchronized
-    public void fin() {
+    public void fin(int newValue) {
         // Enregistre la requête dans sa liste
-        Message req = new Message(Message.TYPE.LIBERE, clockLogical, numSite);
+        Message req = new Message(Message.TYPE.LIBERE, clockLogical, numSite, newValue);
         messageFile.set(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size() - 1; i++) {
             if (i != numSite) {
+                // inclure dans le message la valeur de la variable globale
                 envoi(req, i);
             }
         }
@@ -142,6 +143,7 @@ public class Lamport {
                 break;
             case LIBERE:
                 messageFile.set(msg.getOriginSite(), msg);
+                // maj de la variable globale
                 break;
             case QUITTANCE:
                 if (messageFile.get(msg.originSite).getType() != Message.TYPE.REQUETE) {
