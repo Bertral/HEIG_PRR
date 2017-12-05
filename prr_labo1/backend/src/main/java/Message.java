@@ -1,6 +1,5 @@
-enum TYPE {REQUETE, QUITTANCE, LIBERE}
-
 public class Message {
+    public enum TYPE {REQUETE, QUITTANCE, LIBERE}
     TYPE type;
     long estampille;
     int originSite;

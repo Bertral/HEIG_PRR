@@ -1,4 +1,5 @@
 import java.rmi.*;
+import java.util.Scanner;
 
 
 /**
@@ -6,24 +7,53 @@ import java.rmi.*;
  * Date : 08.11.17
  */
 public class Main {
-
-    // Le frontend tourne sur la VM qui servira d'interface au backend
-
     public static void main(String[] args) {
-        if(args.length != 1) {
+        if (args.length != 1) {
             System.out.println("Argument invalide : [numéro du site]");
         }
 
         // connexion au serveur RMI
         try {
-            Remote r = Naming.lookup("rmi://localhost/Data"+args[0]);
-            Data data = (Data)r;
+            Remote r = Naming.lookup("rmi://localhost/Data" + args[0]);
+            Data data = (Data) r;
 
-            System.out.println("Received data : " + data.getValue());
+            // boucle d'exécution
+            Scanner sc = new Scanner(System.in);
+            displayCommands();
+            while (true) {
+                String input = sc.nextLine();
 
-
+                if (input.contains("req")) {
+                    System.out.println("Locking mutex ...");
+                    data.lockMutex();
+                    System.out.println("Mutex locked");
+                } else if (input.contains("set")) {
+                    System.out.print("Enter new global value (integer only) : ");
+                    data.setValue(sc.nextInt());
+                    System.out.println("New value set");
+                } else if (input.contains("rel")) {
+                    System.out.println("Releasing mutex ...");
+                    data.releaseMutex();
+                    System.out.println("Mutex released");
+                } else if (input.contains("get")) {
+                    System.out.println("Current global value : " + data.getValue());
+                } else {
+                    continue;
+                }
+                displayCommands();
+            }
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
+    }
+
+    private static void displayCommands() {
+        System.out.println("===== Commands ====");
+        System.out.println("req : request mutex");
+        System.out.println("set : set new value");
+        System.out.println("rel : release mutex");
+        System.out.println("get : display value");
+        System.out.print("> ");
     }
 }

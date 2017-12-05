@@ -18,8 +18,8 @@ public class Lamport {
         this.nbSite = nbSite;
         this.clockLogical = 0;
         this.scAccorde = false;
-        this.messageFile = new ArrayList(this.nbSite);
-        this.siteAdressFile = new ArrayList<Integer>(this.nbSite);
+        this.messageFile = new ArrayList<Message>();
+        this.siteAdressFile = new ArrayList<Integer>();
         initMessageFile();
         initSiteAdressFile();
     }
@@ -28,8 +28,8 @@ public class Lamport {
      * Initialisation de la file des messages des N sites
      */
     private void initMessageFile() {
-        for (int i = 0; i < messageFile.size(); i++) {
-            messageFile.add(i, new Message(TYPE.LIBERE, 0, i));
+        for (int i = 0; i < nbSite; i++) {
+            messageFile.add(new Message(Message.TYPE.LIBERE, 0, i));
         }
     }
 
@@ -37,11 +37,10 @@ public class Lamport {
      * Initialisation des adresses des sites
      */
     private void initSiteAdressFile() {
-        for (int i = 0; i < siteAdressFile.size(); i++) {
-            siteAdressFile.add(i, i);
+        for (int i = 0; i < nbSite; i++) {
+            siteAdressFile.add(i);
         }
     }
-
 
     /**
      * Retourne si le site actuel peut accéder à la section critique
@@ -82,8 +81,8 @@ public class Lamport {
         // Maj horloge interne
         this.clockLogical += 1;
         // Enregistre la requête dans sa liste
-        Message req = new Message(TYPE.REQUETE, clockLogical, numSite);
-        messageFile.add(this.numSite, req);
+        Message req = new Message(Message.TYPE.REQUETE, clockLogical, numSite);
+        messageFile.set(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != numSite) {
@@ -103,8 +102,8 @@ public class Lamport {
     synchronized
     public void fin() {
         // Enregistre la requête dans sa liste
-        Message req = new Message(TYPE.LIBERE, clockLogical, numSite);
-        messageFile.add(this.numSite, req);
+        Message req = new Message(Message.TYPE.LIBERE, clockLogical, numSite);
+        messageFile.set(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != numSite) {
@@ -124,20 +123,20 @@ public class Lamport {
         clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
         switch (msg.getType()) {
             case REQUETE:
-                messageFile.add(msg.getOriginSite(), msg);
-                envoi(new Message(TYPE.QUITTANCE, clockLogical, numSite), msg.getOriginSite());
+                messageFile.set(msg.getOriginSite(), msg);
+                envoi(new Message(Message.TYPE.QUITTANCE, clockLogical, numSite), msg.getOriginSite());
                 break;
             case LIBERE:
-                messageFile.add(msg.getOriginSite(), msg);
+                messageFile.set(msg.getOriginSite(), msg);
                 break;
             case QUITTANCE:
-                if (messageFile.get(msg.originSite).getType() != TYPE.REQUETE) {
-                    messageFile.add(msg.getOriginSite(), msg);
+                if (messageFile.get(msg.originSite).getType() != Message.TYPE.REQUETE) {
+                    messageFile.set(msg.getOriginSite(), msg);
                 }
                 break;
         }
         // Vérifie l'accès à la section critique
-        scAccorde = (messageFile.get(numSite).getType() == TYPE.REQUETE) && permission(numSite);
+        scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
 
         // On a la permission et on veut rentré en SC réveiller le thread en attente
         if (scAccorde) {

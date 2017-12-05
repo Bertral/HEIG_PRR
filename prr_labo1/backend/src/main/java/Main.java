@@ -29,6 +29,8 @@ public class Main {
             String url = "rmi://" + InetAddress.getLocalHost().getHostAddress() + "/Data" + args[0];
             Naming.rebind(url, dataImpl);
 
+            System.out.println("Server started");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
