@@ -4,6 +4,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Project : prr_labo2
@@ -13,7 +14,7 @@ import java.util.Properties;
  * Objet contenant
  */
 public class DataImpl extends UnicastRemoteObject implements Data {
-    private int value = 0;                          // Valeur globale
+    private AtomicInteger value;                // Valeur globale
     private int numSite;                            // Id du site (0 à n-1)
     private int nbSite;                             // Nombre de sites (n)
     private long clockLogical;                      // Horloge logique
@@ -21,7 +22,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     private ArrayList<Message> messageFile;         // Messages reçus par les sites (un site par index)
     private ArrayList<Integer> siteAdressFile;      // Adresses des sites
     private boolean waitClient;                     // Vrai si le client est en attente (condition d'attente)
-
+    private Object lockFile;
+    private Object lockClock;
     /**
      * Constructeur
      *
@@ -38,6 +40,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @param nbSite
      */
     public void init(int numSite, int nbSite) {
+        this.value = new AtomicInteger(0);
         this.numSite = numSite;
         this.nbSite = nbSite;
         this.clockLogical = 0;
@@ -45,6 +48,9 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         this.waitClient = false;
         this.messageFile = new ArrayList<Message>();
         this.siteAdressFile = new ArrayList<Integer>();
+        this.lockClock = new Object();
+        this.lockFile = new Object();
+
         initMessageFile();
         initSiteAdressFile();
     }
@@ -52,8 +58,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     // RMI
     @Override
     public int getValue() throws RemoteException {
-        System.out.println("Sending value : " + value);
-        return value;
+        System.out.println("Sending value : " + value.get());
+        return value.get();
     }
 
     // RMI
@@ -79,7 +85,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     @Override
     public void setValue(int value) throws RemoteException {
         System.out.println("Setting value : " + value);
-        this.value = value;
+        this.value.set(value);
     }
 
     /**
@@ -111,9 +117,12 @@ public class DataImpl extends UnicastRemoteObject implements Data {
 
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != me) {
-                accord = accord && ((messageFile.get(me).getStamp() < messageFile.get(i).getStamp()
-                        || (messageFile.get(me).getStamp() == messageFile.get(i).getStamp() && me < i)));
+                synchronized (lockFile) {
+                    accord = accord && ((messageFile.get(me).getStamp() < messageFile.get(i).getStamp()
+                            || (messageFile.get(me).getStamp() == messageFile.get(i).getStamp() && me < i)));
+                }
             }
+
         }
         return accord;
     }
@@ -147,14 +156,17 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      *
      * @throws InterruptedException
      */
-    synchronized
     private void demande() throws InterruptedException {
         // Maj horloge interne
-        this.clockLogical += 1;
+        synchronized (lockClock) {
+            this.clockLogical += 1;
+        }
 
         // Enregistre la requête dans sa liste
         Message req = new Message(Message.TYPE.REQUEST, clockLogical, numSite);
-        messageFile.set(this.numSite, req);
+        synchronized (lockFile) {
+            messageFile.set(this.numSite, req);
+        }
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != numSite) {
@@ -165,7 +177,9 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         if (!scGrant) {
             System.out.println("** Wait SC");
             waitClient = true;
-            wait();
+            synchronized (this) {
+                wait();
+            }
             scGrant = true;
         }
         System.out.println("** Acces SC");
@@ -174,15 +188,17 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     /**
      * Fin de la section critique, libère l'accès.
      */
-    private void end() {
+    private void end() throws RemoteException {
         // Enregistre la requête dans sa liste
-        Message req = new MessageRelease(clockLogical, numSite, value);
-        messageFile.set(this.numSite, req);
+        Message msg = new MessageRelease(clockLogical, numSite, getValue());
+        synchronized (lockFile) {
+            messageFile.set(this.numSite, msg);
+        }
 
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != numSite) {
-                send(req, i);
+                send(msg, i);
             }
         }
         scGrant = false;
@@ -196,33 +212,47 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     @Override
     public void receive(Message msg) {
         // Maj de l'horloge logique
-        clockLogical = Math.max(clockLogical, msg.getStamp()) + 1;
+        synchronized (lockClock) {
+            clockLogical = Math.max(clockLogical, msg.getStamp()) + 1;
+        }
 
         System.out.println("Recoit message < type: " + msg.type + ", stamp: " + msg.stamp +", origine: " + msg.getOriginSite()+" >");
 
         switch (msg.getType()) {
             case REQUEST:
-                messageFile.set(msg.getOriginSite(), msg);
+                synchronized (lockFile) {
+                    messageFile.set(msg.getOriginSite(), msg);
+                }
                 send(new Message(Message.TYPE.RECEIPT, clockLogical, numSite), msg.getOriginSite());
                 break;
             case RELEASE:
                 try {
-                    messageFile.set(msg.getOriginSite(), msg);
+                    synchronized (lockFile) {
+                        messageFile.set(msg.getOriginSite(), msg);
+                    }
                     setValue(((MessageRelease) msg).getNewValue());
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
                 break;
             case RECEIPT:
-                if (messageFile.get(msg.originSite).getType() != Message.TYPE.REQUEST) {
-                    messageFile.set(msg.getOriginSite(), msg);
+                synchronized (lockFile) {
+                    if (messageFile.get(msg.originSite).getType() != Message.TYPE.REQUEST) {
+                        messageFile.set(msg.getOriginSite(), msg);
+                    }
                 }
                 break;
         }
         // Vérifie l'accès à la section critique
-        scGrant = (messageFile.get(numSite).getType() == Message.TYPE.REQUEST) && permission(numSite);
+        Message.TYPE t;
+        synchronized (lockFile) {
+           t = messageFile.get(numSite).getType();
+        }
+        scGrant = (t == Message.TYPE.REQUEST) && permission(numSite);
 
-        System.out.println("Autorisation client : " + scGrant + ", req : "+ messageFile.get(numSite).getType());
+        synchronized (lockFile) {
+            System.out.println("Autorisation client : " + scGrant + ", req : " + messageFile.get(numSite).getType());
+        }
         if (scGrant && waitClient) {
             System.out.println("** Relache un client");
             waitClient = false;
