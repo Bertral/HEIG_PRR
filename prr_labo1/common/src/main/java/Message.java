@@ -1,5 +1,3 @@
-import java.io.Serializable;
-
 /**
  * Project : prr_labo2
  * Date : 08.11.17
@@ -7,11 +5,16 @@ import java.io.Serializable;
  *
  * Classe représentant un message de l'algorithme de Lamport pour communication par RMI
  */
+
+import java.io.Serializable;
+
 public class Message implements Serializable {
+    // 3 types de messages
     public enum TYPE {REQUEST, RECEIPT, RELEASE}
-    TYPE type;
-    long stamp;
-    int originSite;
+
+    TYPE type;              // type du message
+    long stamp;             // estampille
+    int originSite;         // site originaire du message
 
     /**
      * Constructeur
@@ -42,8 +45,8 @@ public class Message implements Serializable {
     }
 
     /**
-     * Récupère le type du message, soit REQUEST, RECEIPT, RELEASE
-     * @return
+     * Récupère le type du message du type REQUEST, RECEIPT ou RELEASE
+     * @return type du message
      */
     public TYPE getType() {
         return type;

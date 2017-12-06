@@ -1,12 +1,14 @@
-import java.io.Serializable;
-
 /**
  * Project : prr_labo2
  * Date : 08.11.17
  * Auteurs : Antoine Friant et Michela Zucca
  *
  * Sous-type de message contenant un payload supplémentaires : la nouvelle valeur à affecter
+ * Type du message fixe : RELEASE
  */
+
+import java.io.Serializable;
+
 public class MessageRelease extends Message implements Serializable {
     private int newValue;
 

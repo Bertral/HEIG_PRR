@@ -1,14 +1,17 @@
-import java.net.InetAddress;
-import java.rmi.*;
-import java.rmi.registry.LocateRegistry;
-
 /**
  * Project : prr_labo2
  * Date : 08.11.17
  * Auteurs : Antoine Friant et Michela Zucca
  *
  * Point d'entrée du programme serveur
+ *
+ * RMI Registery
  */
+
+import java.net.InetAddress;
+import java.rmi.*;
+import java.rmi.registry.LocateRegistry;
+
 public class Main {
     public static void main(String[] args) {
         if(args.length != 2){

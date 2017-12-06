@@ -1,32 +1,54 @@
+/**
+ * Project : prr_labo2
+ * Date : 16.11.17
+ * Auteurs : Antoine Friant et Michela Zucca
+ *
+ * Objet contenant
+ * Gestionnaire du site en charge de maintenir la cohérence de la donnée <value>
+ *     - Utilisation de RMI pour la communication entre les sites et les tâches applicatives
+ *     - Utilisation de l'algorithme de Lamport pour le partage de la section critique
+ *          - Utilisation d'une file de message pour stocker l'état des autres sites.
+ *          - Horloge logique recalibré à chaque envoi de <request> ou de réception d'un message
+ *          - Messages :
+ *              Request : demande émise pour un souhait d'entrer en section critique,
+ *                        doit être suivi de la réception d'une quittance des autres sites.
+ *              Receipt : quittance émise à la réception d'une demande d'exclusion
+ *              Release : message émis à la fin de la section critique et envoyé à tous les autres sites.
+ *          - Règle d'accès à une section critique lors d'une demande (request) :
+ *              - Cas 1 : estampille(i) < estampille(j) : accès à la section critique pour i
+ *              - Cas 2 : estampile(i) = estampille(j) et i < j : accès à la section critique pour i
+ *
+ * Remarques : pour faciliter la vérification du fonctionnement de l'algorithme des messages sont afficher pour indiquer
+ * les différentes actions réalisées côté serveur.
+ *  - Demande d'accès à la section ctirique
+ *      - Attente
+ *      - Accès
+ *      - Fin
+ *  - Messages échangés < TYPE, estampille, site d'origine>
+ *  - Accès en lecture : affichage de la valeur retournée
+ *  - Accès en écriture : Affichage de la valeur modifiée
+ */
+
 import java.rmi.Naming;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Properties;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Project : prr_labo2
- * Date : 16.11.17
- * Auteurs : Antoine Friant et Michela Zucca
- * <p>
- * Objet contenant
- */
 public class DataImpl extends UnicastRemoteObject implements Data {
-    private static int value;                // Valeur globale
+    private static int value;                       // Valeur globale
     private int numSite;                            // Id du site (0 à n-1)
     private int nbSite;                             // Nombre de sites (n)
     private long clockLogical;                      // Horloge logique
-    private boolean scGrant;                      // Possibilité d'accès à la variable globale
+    private boolean scGrant;                        // Possibilité d'accès à la variable globale
     private ArrayList<Message> messageFile;         // Messages reçus par les sites (un site par index)
     private ArrayList<Integer> siteAdressFile;      // Adresses des sites
-    private boolean waitClient;                     // Vrai si le client est en attente (condition d'attente)
-    private static Object lockFile;
-    private static Object lockClock;
-    private static Object lockValue;
+    private boolean waitAccesSC;                    // Vrai si le client est en attente (condition d'attente)
+    // Objets de synchronisations
+    private static final Object lockFile = new Object();
+    private static final Object lockClock = new Object();
+    private static final Object lockValue = new Object();
     /**
      * Constructeur
      *
@@ -39,39 +61,44 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     /**
      * Initialise les données nécessaires au fonctionnement de l'algorithme de Lamport
      *
-     * @param numSite
-     * @param nbSite
+     * @param numSite numéro du site
+     * @param nbSite nombre de site
      */
     public void init(int numSite, int nbSite) {
-       // this.value = new AtomicInteger(0);
         this.value = 0;
         this.numSite = numSite;
         this.nbSite = nbSite;
         this.clockLogical = 0;
         this.scGrant = false;
-        this.waitClient = false;
+        this.waitAccesSC = false;
         this.messageFile = new ArrayList<Message>();
         this.siteAdressFile = new ArrayList<Integer>();
-        this.lockClock = new Object();
-        this.lockFile = new Object();
-        this.lockValue = new Object();
 
         initMessageFile();
         initSiteAdressFile();
     }
 
-    // RMI
+    /**
+     * Implémentaiton de l'interface RMI
+     * Lecture de la valeur globale.
+     * @return valeur
+     * @throws RemoteException
+     */
     @Override
     public int getValue() throws RemoteException {
         int i;
-        synchronized (lockValue) {
-            System.out.println("Sending value : " + value);
-            i = value;
+        synchronized (lockValue){
+            System.out.println("Read value : " + value);
+             i = value;
         }
         return i;
     }
 
-    // RMI
+    /**
+     * Implémentaiton de l'interface RMI
+     * Demande d'acquisition du mutex, envoi du message <Request> méthode bloquante.
+     * @throws RemoteException
+     */
     @Override
     public void lockMutex() throws RemoteException {
         System.out.println("Locking mutex");
@@ -83,21 +110,29 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         }
     }
 
-    // RMI
+    /**
+     * Implémentaiton de l'interface RMI
+     * Relachement du mutex, envoi du message <Release>
+     * @throws RemoteException
+     */
     @Override
     public void releaseMutex() throws RemoteException {
         System.out.println("Releasing mutex");
         end();
-
     }
 
-    // RMI
+    /**
+     * Implémentaiton de l'interface RMI
+     * Ecriture d'une nouvelle valeur pour la variable globale
+     * @param value
+     * @throws RemoteException
+     */
     @Override
     public void setValue(int value) throws RemoteException {
-        synchronized (lockValue) {
-            System.out.println("Setting value : " + value);
-            this.value = value;
-        }
+       System.out.println("Write value : " + value);
+       synchronized (lockValue) {
+           this.value = value;
+       }
     }
 
     /**
@@ -145,8 +180,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      */
     private void send(Message msg, int dest) {
         try {
-            System.out.println("Envoi message au site : " + dest
-                    +" < type: " + msg.type + ", estampille: "+msg.stamp +", origine: " +msg.originSite
+            System.out.println("Send message to site : " + dest
+                    +" < type: " + msg.type + ", stamp: "+msg.stamp +", origin: " +msg.originSite
                     + (msg.type == Message.TYPE.RELEASE ? ((MessageRelease)msg).getNewValue()+" >" : " >"));
             // récupération de la liste des serveurs
             Properties properties = new Properties();
@@ -186,7 +221,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         scGrant = permission(numSite);
         if (!scGrant) {
             System.out.println("** Wait SC");
-            waitClient = true;
+            waitAccesSC = true;
             synchronized (this) {
                 wait();
             }
@@ -226,7 +261,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             clockLogical = Math.max(clockLogical, msg.getStamp()) + 1;
         }
 
-        System.out.println("Recoit message < type: " + msg.type + ", stamp: " + msg.stamp +", origine: " + msg.getOriginSite()+" >");
+        System.out.println("Received message < type: " + msg.type + ", stamp: " + msg.stamp
+                +", origin: " + msg.getOriginSite()+" >");
 
         switch (msg.getType()) {
             case REQUEST:
@@ -261,11 +297,11 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         scGrant = (t == Message.TYPE.REQUEST) && permission(numSite);
 
         synchronized (lockFile) {
-            System.out.println("Autorisation client : " + scGrant + ", req : " + messageFile.get(numSite).getType());
+            System.out.println("Client authorization  : " + scGrant + ", req : " + messageFile.get(numSite).getType());
         }
-        if (scGrant && waitClient) {
-            System.out.println("** Relache un client");
-            waitClient = false;
+        if (scGrant && waitAccesSC) {
+            System.out.println("** Release client");
+            waitAccesSC = false;
             synchronized (this) {
                 notify();
             }
@@ -273,7 +309,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
 
         // affiche état
         synchronized (lockFile) {
-            System.out.println("Etat de la file : ");
+            System.out.println("State sites : ");
             for (Message m : messageFile) {
                 System.out.println("< " + m.type + ", " + m.stamp + ", " + m.originSite + " >");
             }
