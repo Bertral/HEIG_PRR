@@ -4,7 +4,9 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Project : prr_labo2
@@ -14,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Objet contenant
  */
 public class DataImpl extends UnicastRemoteObject implements Data {
-    private AtomicInteger value;                // Valeur globale
+    private static int value;                // Valeur globale
     private int numSite;                            // Id du site (0 à n-1)
     private int nbSite;                             // Nombre de sites (n)
     private long clockLogical;                      // Horloge logique
@@ -22,8 +24,9 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     private ArrayList<Message> messageFile;         // Messages reçus par les sites (un site par index)
     private ArrayList<Integer> siteAdressFile;      // Adresses des sites
     private boolean waitClient;                     // Vrai si le client est en attente (condition d'attente)
-    private Object lockFile;
-    private Object lockClock;
+    private static Object lockFile;
+    private static Object lockClock;
+    private static Object lockValue;
     /**
      * Constructeur
      *
@@ -40,7 +43,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * @param nbSite
      */
     public void init(int numSite, int nbSite) {
-        this.value = new AtomicInteger(0);
+       // this.value = new AtomicInteger(0);
+        this.value = 0;
         this.numSite = numSite;
         this.nbSite = nbSite;
         this.clockLogical = 0;
@@ -50,6 +54,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         this.siteAdressFile = new ArrayList<Integer>();
         this.lockClock = new Object();
         this.lockFile = new Object();
+        this.lockValue = new Object();
 
         initMessageFile();
         initSiteAdressFile();
@@ -58,8 +63,12 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     // RMI
     @Override
     public int getValue() throws RemoteException {
-        System.out.println("Sending value : " + value.get());
-        return value.get();
+        int i;
+        synchronized (lockValue) {
+            System.out.println("Sending value : " + value);
+            i = value;
+        }
+        return i;
     }
 
     // RMI
@@ -79,13 +88,16 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     public void releaseMutex() throws RemoteException {
         System.out.println("Releasing mutex");
         end();
+
     }
 
     // RMI
     @Override
     public void setValue(int value) throws RemoteException {
-        System.out.println("Setting value : " + value);
-        this.value.set(value);
+        synchronized (lockValue) {
+            System.out.println("Setting value : " + value);
+            this.value = value;
+        }
     }
 
     /**
@@ -114,15 +126,13 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      */
     private boolean permission(int me) {
         boolean accord = true;
-
-        for (int i = 0; i < siteAdressFile.size(); i++) {
-            if (i != me) {
-                synchronized (lockFile) {
+        synchronized (lockFile) {
+            for (int i = 0; i < siteAdressFile.size(); i++) {
+                if (i != me) {
                     accord = accord && ((messageFile.get(me).getStamp() < messageFile.get(i).getStamp()
                             || (messageFile.get(me).getStamp() == messageFile.get(i).getStamp() && me < i)));
                 }
             }
-
         }
         return accord;
     }
@@ -246,7 +256,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         // Vérifie l'accès à la section critique
         Message.TYPE t;
         synchronized (lockFile) {
-           t = messageFile.get(numSite).getType();
+            t = messageFile.get(numSite).getType();
         }
         scGrant = (t == Message.TYPE.REQUEST) && permission(numSite);
 
@@ -262,9 +272,11 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         }
 
         // affiche état
-        System.out.println("Etat de la file : ");
-        for (Message m : messageFile) {
-            System.out.println("< " + m.type + ", " + m.stamp + ", " + m.originSite+" >");
+        synchronized (lockFile) {
+            System.out.println("Etat de la file : ");
+            for (Message m : messageFile) {
+                System.out.println("< " + m.type + ", " + m.stamp + ", " + m.originSite + " >");
+            }
         }
     }
 }

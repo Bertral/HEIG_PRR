@@ -104,7 +104,9 @@ public class Main {
     }
 
     private static void testAuto(Data data ) throws RemoteException, InterruptedException {
-        for(int i = 0; i < 2000; i++) {
+        for(int i = 0; i < 1000; i++) {
+            System.out.println("Lire la valeur : " + data.getValue());
+
             System.out.println("\nLocking mutex ...");
             data.lockMutex();
             System.out.println("Mutex locked");
@@ -115,7 +117,6 @@ public class Main {
             data.releaseMutex();
             System.out.println("Mutex released\n");
 
-            System.out.println("Lire la valeur : " + data.getValue());
             sleep(10);
         }
     }
