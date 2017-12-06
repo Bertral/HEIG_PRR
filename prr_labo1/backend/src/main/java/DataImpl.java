@@ -166,6 +166,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
             System.out.println("** Wait SC");
             waitClient = true;
             wait();
+            scGrant = true;
         }
         System.out.println("** Acces SC");
     }
@@ -221,7 +222,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         // Vérifie l'accès à la section critique
         scGrant = (messageFile.get(numSite).getType() == Message.TYPE.REQUEST) && permission(numSite);
 
-
+        System.out.println("Autorisation client : " + scGrant + ", req : "+ messageFile.get(numSite).getType());
         if (scGrant && waitClient) {
             System.out.println("** Relache un client");
             waitClient = false;

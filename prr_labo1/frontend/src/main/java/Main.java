@@ -3,6 +3,8 @@ import java.rmi.*;
 import java.util.Properties;
 import java.util.Scanner;
 
+import static java.lang.Thread.sleep;
+
 
 /**
  * Project : prr_labo2
@@ -52,7 +54,7 @@ public class Main {
             Data data = (Data) r;
 
             // boucle d'exécution
-            Scanner sc = new Scanner(System.in);
+      /*      Scanner sc = new Scanner(System.in);
             displayCommands();
             while (true) {
                 String input = sc.nextLine();
@@ -77,7 +79,21 @@ public class Main {
                     continue;
                 }
                 displayCommands();
-            }
+            }*/
+      for(int i = 0; i < 200; i++) {
+          System.out.println("\nLocking mutex ...");
+          data.lockMutex();
+          System.out.println("Mutex locked");
+          System.out.println("Valeur avant modification : " + data.getValue());
+          data.setValue(data.getValue() + 1);
+          System.out.println("Valeur après modification : " + data.getValue());
+          System.out.println("Releasing mutex ...");
+          data.releaseMutex();
+          System.out.println("Mutex released\n");
+
+          System.out.println("Lire la valeur : " + data.getValue());
+          sleep(10);
+      }
         } catch (Exception e) {
             e.printStackTrace();
             return;
