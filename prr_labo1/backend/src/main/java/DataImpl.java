@@ -131,26 +131,26 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      */
     synchronized
     private void demande() throws InterruptedException {
-            // Maj horloge interne
-            this.clockLogical += 1;
+        // Maj horloge interne
+        this.clockLogical += 1;
 
-            // Enregistre la requête dans sa liste
-            Message req = new Message(Message.TYPE.REQUETE, clockLogical, numSite);
-            messageFile.set(this.numSite, req);
-            // Signaler à tous les autres sites la nouvelle requête
-            for (int i = 0; i < siteAdressFile.size(); i++) {
-                if (i != numSite) {
-                    envoi(req, i);
-                }
+        // Enregistre la requête dans sa liste
+        Message req = new Message(Message.TYPE.REQUETE, clockLogical, numSite);
+        messageFile.set(this.numSite, req);
+        // Signaler à tous les autres sites la nouvelle requête
+        for (int i = 0; i < siteAdressFile.size(); i++) {
+            if (i != numSite) {
+                envoi(req, i);
             }
-            scAccorde = permission(numSite);
-            System.out.println(scAccorde);
-            if (!scAccorde) {
-                System.out.println("wait sc");
-                waitClient = true;
-                wait();
-            }
-            System.out.println("acces sc - fin demande");
+        }
+        scAccorde = permission(numSite);
+        System.out.println(scAccorde);
+        if (!scAccorde) {
+            System.out.println("wait sc");
+            waitClient = true;
+            wait();
+        }
+        System.out.println("acces sc - fin demande");
     }
 
     /**
@@ -205,18 +205,18 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
 
 
-            if (scAccorde && waitClient) {
-                System.out.println("relache client");
-                waitClient = false;
-                synchronized (this) {
-                    notify();
-                }
+        if (scAccorde && waitClient) {
+            System.out.println("relache client");
+            waitClient = false;
+            synchronized (this) {
+                notify();
             }
+        }
 
 
         // affiche état
-        for(Message m : messageFile){
-            System.out.println(m.type + " " + m.estampille + " "+ m.originSite );
+        for (Message m : messageFile) {
+            System.out.println(m.type + " " + m.estampille + " " + m.originSite);
         }
     }
 }
