@@ -6,8 +6,9 @@ import java.util.ArrayList;
 import java.util.Properties;
 
 /**
- * Project : prr_labo1
+ * Project : prr_labo2
  * Date : 16.11.17
+ * Auteurs : Antoine Friant et Michela Zucca
  * <p>
  * Objet contenant
  */
@@ -16,10 +17,10 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     private int numSite;                            // Id du site (0 à n-1)
     private int nbSite;                             // Nombre de sites (n)
     private long clockLogical;                      // Horloge logique
-    private boolean scAccorde;                      // Possibilité d'accès à la variable globale
+    private boolean scGrant;                      // Possibilité d'accès à la variable globale
     private ArrayList<Message> messageFile;         // Messages reçus par les sites (un site par index)
     private ArrayList<Integer> siteAdressFile;      // Adresses des sites
-    private boolean waitClient = false;             // Vrai si le client est en attente (condition d'attente)
+    private boolean waitClient;                     // Vrai si le client est en attente (condition d'attente)
 
     /**
      * Constructeur
@@ -40,7 +41,8 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         this.numSite = numSite;
         this.nbSite = nbSite;
         this.clockLogical = 0;
-        this.scAccorde = false;
+        this.scGrant = false;
+        this.waitClient = false;
         this.messageFile = new ArrayList<Message>();
         this.siteAdressFile = new ArrayList<Integer>();
         initMessageFile();
@@ -70,7 +72,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     @Override
     public void releaseMutex() throws RemoteException {
         System.out.println("Releasing mutex");
-        fin();
+        end();
     }
 
     // RMI
@@ -85,7 +87,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      */
     private void initMessageFile() {
         for (int i = 0; i < nbSite; i++) {
-            messageFile.add(new Message(Message.TYPE.LIBERE, 0, i));
+            messageFile.add(new Message(Message.TYPE.RELEASE, 0, i));
         }
     }
 
@@ -102,15 +104,15 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      * Retourne si le site actuel peut accéder à la section critique
      *
      * @param me numéro du site
-     * @return
+     * @return droit d'accès à la section critique
      */
     private boolean permission(int me) {
         boolean accord = true;
 
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != me) {
-                accord = accord && ((messageFile.get(me).getEstampille() < messageFile.get(i).getEstampille()
-                        || (messageFile.get(me).getEstampille() == messageFile.get(i).getEstampille() && me < i)));
+                accord = accord && ((messageFile.get(me).getStamp() < messageFile.get(i).getStamp()
+                        || (messageFile.get(me).getStamp() == messageFile.get(i).getStamp() && me < i)));
             }
         }
         return accord;
@@ -119,24 +121,24 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     /**
      * Envoi un message "msg" à un site "dest" identifié par son numéro
      *
-     * @param msg
-     * @param dest
+     * @param msg message
+     * @param dest destinataire
      */
-    private void envoi(Message msg, int dest) {
-        // Envoyer au site dest, la requete et mon num de site
-        // Utiliser RMI pour faire le lien entre site numéro i et son adresse
+    private void send(Message msg, int dest) {
         try {
-            System.out.println("Envoi : " + msg.type + " a " + dest);
+            System.out.println("Envoi message au site : " + dest
+                    +" < type: " + msg.type + ", estampille: "+msg.stamp +", origine: " +msg.originSite
+                    + (msg.type == Message.TYPE.RELEASE ? ((MessageRelease)msg).getNewValue()+" >" : " >"));
             // récupération de la liste des serveurs
             Properties properties = new Properties();
             properties.load(this.getClass().getClassLoader().getResourceAsStream("sites.properties"));
 
             Remote r = Naming.lookup(properties.getProperty("" + dest));
             Data data = (Data) r;
-            data.recoit(msg);
+            data.receive(msg);
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println("error envoi");
+            System.out.println("Send error");
         }
     }
 
@@ -151,88 +153,87 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         this.clockLogical += 1;
 
         // Enregistre la requête dans sa liste
-        Message req = new Message(Message.TYPE.REQUETE, clockLogical, numSite);
+        Message req = new Message(Message.TYPE.REQUEST, clockLogical, numSite);
         messageFile.set(this.numSite, req);
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != numSite) {
-                envoi(req, i);
+                send(req, i);
             }
         }
-        scAccorde = permission(numSite);
-        System.out.println(scAccorde);
-        if (!scAccorde) {
-            System.out.println("wait sc");
+        scGrant = permission(numSite);
+        if (!scGrant) {
+            System.out.println("** Wait SC");
             waitClient = true;
             wait();
         }
-        System.out.println("acces sc - fin demande");
+        System.out.println("** Acces SC");
     }
 
     /**
      * Fin de la section critique, libère l'accès.
      */
-    private void fin() {
+    private void end() {
         // Enregistre la requête dans sa liste
-        Message req = new MessageLibere(Message.TYPE.LIBERE, clockLogical, numSite, value);
+        Message req = new MessageRelease(clockLogical, numSite, value);
         messageFile.set(this.numSite, req);
 
         // Signaler à tous les autres sites la nouvelle requête
         for (int i = 0; i < siteAdressFile.size(); i++) {
             if (i != numSite) {
-                envoi(req, i);
+                send(req, i);
             }
         }
-        scAccorde = false;
+        scGrant = false;
     }
 
     /**
-     * Traitement des messages reçus du type REQUETE, LIBERE et QUITTANCE
+     * Traitement des messages reçus du type REQUEST, RELEASE et RECEIPT
      * Cette méthode est exposée par RMI pour la communication entre serveurs
      * @param msg message à analyser
      */
     @Override
-    public void recoit(Message msg) {
+    public void receive(Message msg) {
         // Maj de l'horloge logique
-        clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
+        clockLogical = Math.max(clockLogical, msg.getStamp()) + 1;
 
-        System.out.println("Recoit " + msg.type + " de " + msg.getOriginSite());
+        System.out.println("Recoit message < type: " + msg.type + ", stamp: " + msg.stamp +", origine: " + msg.getOriginSite()+" >");
 
         switch (msg.getType()) {
-            case REQUETE:
+            case REQUEST:
                 messageFile.set(msg.getOriginSite(), msg);
-                envoi(new Message(Message.TYPE.QUITTANCE, clockLogical, numSite), msg.getOriginSite());
+                send(new Message(Message.TYPE.RECEIPT, clockLogical, numSite), msg.getOriginSite());
                 break;
-            case LIBERE:
+            case RELEASE:
                 try {
                     messageFile.set(msg.getOriginSite(), msg);
-                    setValue(((MessageLibere) msg).getNewValue());
+                    setValue(((MessageRelease) msg).getNewValue());
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
                 break;
-            case QUITTANCE:
-                if (messageFile.get(msg.originSite).getType() != Message.TYPE.REQUETE) {
+            case RECEIPT:
+                if (messageFile.get(msg.originSite).getType() != Message.TYPE.REQUEST) {
                     messageFile.set(msg.getOriginSite(), msg);
                 }
                 break;
         }
         // Vérifie l'accès à la section critique
-        scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
+        scGrant = (messageFile.get(numSite).getType() == Message.TYPE.REQUEST) && permission(numSite);
 
 
-        if (scAccorde && waitClient) {
-            System.out.println("relache client");
+        if (scGrant && waitClient) {
+            System.out.println("** Relache un client");
             waitClient = false;
             synchronized (this) {
                 notify();
             }
         }
 
-
         // affiche état
+        System.out.println("Etat de la file : ");
         for (Message m : messageFile) {
-            System.out.println(m.type + " " + m.estampille + " " + m.originSite);
+            System.out.println("< " + m.type + ", " + m.stamp + ", " + m.originSite+" >");
         }
     }
 }

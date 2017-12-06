@@ -3,8 +3,9 @@ import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 
 /**
- * Project : prr_labo1
+ * Project : prr_labo2
  * Date : 08.11.17
+ * Auteurs : Antoine Friant et Michela Zucca
  *
  * Point d'entrée du programme serveur
  */

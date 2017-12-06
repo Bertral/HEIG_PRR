@@ -5,8 +5,9 @@ import java.util.Scanner;
 
 
 /**
- * Project : prr_labo1
+ * Project : prr_labo2
  * Date : 08.11.17
+ * Auteurs : Antoine Friant et Michela Zucca
  *
  * Point d'entrée du client
  *
@@ -60,6 +61,8 @@ public class Main {
                     System.out.println("Locking mutex ...");
                     data.lockMutex();
                     System.out.println("Mutex locked");
+
+                    System.out.println("Valeur actuelle : " + data.getValue()+ "\n");
 
                     System.out.print("Enter new global value (integer only) : ");
                     data.setValue(sc.nextInt());

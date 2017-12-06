@@ -1,8 +1,9 @@
 import java.rmi.*;
 
 /**
- * Project : prr_labo1
+ * Project : prr_labo2
  * Date : 16.11.17
+ * Auteurs : Antoine Friant et Michela Zucca
  *
  * Interface de l'objet Remote contenant la donnée protégée par l'algorithme de Lamport
  */
@@ -38,5 +39,5 @@ public interface Data extends Remote {
      * @param msg
      * @throws RemoteException
      */
-    void recoit(Message msg) throws RemoteException;
+    void receive(Message msg) throws RemoteException;
 }
