@@ -1,25 +1,23 @@
 import java.net.InetAddress;
 import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 
 /**
  * Project : prr_labo1
  * Date : 08.11.17
+ *
+ * Point d'entrée du programme serveur
  */
 public class Main {
-
-    // Le backend implémente Lamport
-
     public static void main(String[] args) {
         if(args.length != 2){
-            System.out.println("Arguments invalides : [numéro du site] [nombre de sites]");
+            System.out.println("Arguments invalides : [numéro du site (0 .. n-1)] [nombre de sites (n)]");
             return;
         }
 
         try {
             // création du registre
-            Registry registry = LocateRegistry.createRegistry(1099 + Integer.parseInt(args[0]));
+            LocateRegistry.createRegistry(1099 + Integer.parseInt(args[0]));
 
             // instanciation de la donnée
             DataImpl dataImpl = new DataImpl();

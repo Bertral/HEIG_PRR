@@ -4,30 +4,38 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Properties;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Project : prr_labo1
  * Date : 16.11.17
+ * <p>
+ * Objet contenant
  */
 public class DataImpl extends UnicastRemoteObject implements Data {
-    private int value = 0;
-    private int numSite;
-    private int nbSite;
-    private long clockLogical;
-    private boolean scAccorde;
-    private ArrayList<Message> messageFile;
-    private ArrayList<Integer> siteAdressFile;
-    private boolean waitClient = false;
-    private final Object lock = new Object();
+    private int value = 0;                          // Valeur globale
+    private int numSite;                            // Id du site (0 à n-1)
+    private int nbSite;                             // Nombre de sites (n)
+    private long clockLogical;                      // Horloge logique
+    private boolean scAccorde;                      // Possibilité d'accès à la variable globale
+    private ArrayList<Message> messageFile;         // Messages reçus par les sites (un site par index)
+    private ArrayList<Integer> siteAdressFile;      // Adresses des sites
+    private boolean waitClient = false;             // Vrai si le client est en attente (condition d'attente)
 
-
+    /**
+     * Constructeur
+     *
+     * @throws RemoteException
+     */
     protected DataImpl() throws RemoteException {
         super();
     }
 
+    /**
+     * Initialise les données nécessaires au fonctionnement de l'algorithme de Lamport
+     *
+     * @param numSite
+     * @param nbSite
+     */
     public void init(int numSite, int nbSite) {
         this.numSite = numSite;
         this.nbSite = nbSite;
@@ -39,11 +47,15 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         initSiteAdressFile();
     }
 
+    // RMI
+    @Override
     public int getValue() throws RemoteException {
         System.out.println("Sending value : " + value);
         return value;
     }
 
+    // RMI
+    @Override
     public void lockMutex() throws RemoteException {
         System.out.println("Locking mutex");
         try {
@@ -54,11 +66,15 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         }
     }
 
+    // RMI
+    @Override
     public void releaseMutex() throws RemoteException {
         System.out.println("Releasing mutex");
         fin();
     }
 
+    // RMI
+    @Override
     public void setValue(int value) throws RemoteException {
         System.out.println("Setting value : " + value);
         this.value = value;
@@ -101,7 +117,7 @@ public class DataImpl extends UnicastRemoteObject implements Data {
     }
 
     /**
-     * Envoi un message "msg" à un site "dest"
+     * Envoi un message "msg" à un site "dest" identifié par son numéro
      *
      * @param msg
      * @param dest
@@ -131,26 +147,26 @@ public class DataImpl extends UnicastRemoteObject implements Data {
      */
     synchronized
     private void demande() throws InterruptedException {
-            // Maj horloge interne
-            this.clockLogical += 1;
+        // Maj horloge interne
+        this.clockLogical += 1;
 
-            // Enregistre la requête dans sa liste
-            Message req = new Message(Message.TYPE.REQUETE, clockLogical, numSite);
-            messageFile.set(this.numSite, req);
-            // Signaler à tous les autres sites la nouvelle requête
-            for (int i = 0; i < siteAdressFile.size(); i++) {
-                if (i != numSite) {
-                    envoi(req, i);
-                }
+        // Enregistre la requête dans sa liste
+        Message req = new Message(Message.TYPE.REQUETE, clockLogical, numSite);
+        messageFile.set(this.numSite, req);
+        // Signaler à tous les autres sites la nouvelle requête
+        for (int i = 0; i < siteAdressFile.size(); i++) {
+            if (i != numSite) {
+                envoi(req, i);
             }
-            scAccorde = permission(numSite);
-            System.out.println(scAccorde);
-            if (!scAccorde) {
-                System.out.println("wait sc");
-                waitClient = true;
-                wait();
-            }
-            System.out.println("acces sc - fin demande");
+        }
+        scAccorde = permission(numSite);
+        System.out.println(scAccorde);
+        if (!scAccorde) {
+            System.out.println("wait sc");
+            waitClient = true;
+            wait();
+        }
+        System.out.println("acces sc - fin demande");
     }
 
     /**
@@ -172,10 +188,10 @@ public class DataImpl extends UnicastRemoteObject implements Data {
 
     /**
      * Traitement des messages reçus du type REQUETE, LIBERE et QUITTANCE
-     *
+     * Cette méthode est exposée par RMI pour la communication entre serveurs
      * @param msg message à analyser
      */
-
+    @Override
     public void recoit(Message msg) {
         // Maj de l'horloge logique
         clockLogical = Math.max(clockLogical, msg.getEstampille()) + 1;
@@ -205,18 +221,18 @@ public class DataImpl extends UnicastRemoteObject implements Data {
         scAccorde = (messageFile.get(numSite).getType() == Message.TYPE.REQUETE) && permission(numSite);
 
 
-            if (scAccorde && waitClient) {
-                System.out.println("relache client");
-                waitClient = false;
-                synchronized (this) {
-                    notify();
-                }
+        if (scAccorde && waitClient) {
+            System.out.println("relache client");
+            waitClient = false;
+            synchronized (this) {
+                notify();
             }
+        }
 
 
         // affiche état
-        for(Message m : messageFile){
-            System.out.println(m.type + " " + m.estampille + " "+ m.originSite );
+        for (Message m : messageFile) {
+            System.out.println(m.type + " " + m.estampille + " " + m.originSite);
         }
     }
 }
