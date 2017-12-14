@@ -10,24 +10,21 @@ public class AlgoElection {
     private Site neighbour; // Site voisin
     private Site coordinator; // Site élu
     private boolean annoucementInProgess; // élection en cours
+    private UDPController udpController;
 
     public AlgoElection() {
         this.annoucementInProgess = false;
-    }
-
-    // TODO n'est pas utile dans cette configuration
-    public int evalAptitude(){
-        return 0;
     }
 
     /**
      * Initialisation du site. Un site contient les informations :
      * - no site
      * - aptitude
-     * @param me le site courant
+     *
+     * @param me        le site courant
      * @param neighbour le site voisin
      */
-    public void initialise(Site me, Site neighbour){
+    public void initialise(Site me, Site neighbour) {
         this.me = me;
         this.neighbour = neighbour;
     }
@@ -35,49 +32,51 @@ public class AlgoElection {
     /**
      * Lancement de l'élection au démarrage
      */
-    public void start(){
-        // TODO voir la méthode de communication
-        communication.annonce(me, neighbour);
+    public void start() {
+        udpController.sendAnnounce(neighbour.getNoSite(), me.getNoSite(), udpController.getAptitude());
         annoucementInProgess = true;
     }
 
     /**
      * Annonce reçu d'un autre site, traitement de l'information.
+     *
      * @param otherSite
      */
-    public void annoucement(Site otherSite){
-        this.otheSite = otherSite;
-        if(me.getAptitude() > otherSite.getAptitude()
+    public void annoucement(Site otherSite) {
+        if (me.getAptitude() > otherSite.getAptitude()
                 || (me.getAptitude() == otherSite.getAptitude()
-                && me.getNoSite() > otherSite.getNoSite())){
-            if(annoucementInProgess == false){
-                // TODO voir la méthode de communication
-                communication.annonce(me ,neighbour);
+                && me.getNoSite() > otherSite.getNoSite())) {
+            if (!annoucementInProgess) {
+                udpController.sendAnnounce(neighbour.getNoSite(), me.getNoSite(), udpController.getAptitude());
                 annoucementInProgess = true;
             }
-        }else if(me == otherSite){
-            // TODO voir la méthode de communication
-            communication.resultat(me, neighbour);
-        }else{
-            // TODO voir la méthode de communication
-            communication.annonce(otherSite,neighbour);
+        } else if (me == otherSite) {
+            udpController.sendResult(neighbour.getNoSite(), me.getNoSite());
+        } else {
+            udpController.sendAnnounce(neighbour.getNoSite(), otherSite.getNoSite(), otherSite.getAptitude());
+            annoucementInProgess = true;
         }
     }
 
     /**
      * Réception du résultat de l'élection
+     *
      * @param elu Site élu
      */
-    public void resultat(Site elu){
+    public void resultat(Site elu) {
         this.coordinator = elu;
         annoucementInProgess = false;
+        if (this.coordinator.getNoSite() != me.getNoSite()) {
+            udpController.sendResult(neighbour.getNoSite(), coordinator.getNoSite());
+        }
     }
 
     /**
      * Retourne l'élu actuelle connu
+     *
      * @return l'élu
      */
-    public Site getCoordinator(){
+    public Site getCoordinator() {
         return coordinator;
     }
 
