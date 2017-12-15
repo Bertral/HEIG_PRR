@@ -12,8 +12,14 @@ public class AlgoElection {
     private boolean annoucementInProgess; // élection en cours
     private UDPController udpController;
 
-    public AlgoElection() {
+    /**
+     * Constructeur
+     *
+     * @param num numéro du site local
+     */
+    public AlgoElection(byte num) {
         this.annoucementInProgess = false;
+        this.udpController = new UDPController(num);
     }
 
     /**

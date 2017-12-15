@@ -68,6 +68,7 @@ public class UDPController {
 
     /**
      * Construit UDPController à partir de son numéro de site (l'adresse est définie dans sites.properties)
+     *
      * @param siteId
      */
     public UDPController(byte siteId) {
@@ -97,6 +98,7 @@ public class UDPController {
 
     /**
      * Calcule l'aptitude du site local
+     *
      * @return int
      */
     public int getAptitude() {
@@ -105,6 +107,7 @@ public class UDPController {
 
     /**
      * Envoie un message de type MESSAGE_RESULT
+     *
      * @param destination destinataire du message (numéro de site)
      * @param electedSite site elu à transmettre
      */
@@ -120,9 +123,10 @@ public class UDPController {
 
     /**
      * Envoie un message de type MESSAGE_ANNOUNCE
+     *
      * @param destination destinataire du message (numéro de site)
-     * @param bestSite meilleur candidat à transmettre
-     * @param aptitude aptitude du candidat
+     * @param bestSite    meilleur candidat à transmettre
+     * @param aptitude    aptitude du candidat
      */
     public void sendAnnounce(byte destination, byte bestSite, int aptitude) {
         byte[] array = {MessageType.MESSAGE_ANNOUNCE.getByte(), bestSite, (byte) (aptitude >> 24), (byte) (aptitude
@@ -137,6 +141,7 @@ public class UDPController {
 
     /**
      * Appel bloquant : renvoie le prochain message reçu.
+     *
      * @return Message
      */
     public Message listen() {
