@@ -1,68 +1,12 @@
 import java.io.IOException;
 import java.net.*;
 import java.util.HashMap;
-import java.util.Properties;
 
 /**
  * Project : prr_labo2
  * Date : 14.12.17
  */
 public class UDPController {
-    /**
-     * Représente un type de message
-     */
-    public enum MessageType {
-        MESSAGE_ANNOUNCE((byte) 0),
-        MESSAGE_RESULT((byte) 1);
-
-        private byte value;
-
-        MessageType(byte b) {
-            value = b;
-        }
-
-        /**
-         * @return Type de message sous forme de byte (pour communication)
-         */
-        public byte getByte() {
-            return value;
-        }
-    }
-
-    /**
-     * Représente un message reçu par UDP
-     */
-    public class Message {
-        private MessageType messageType;
-        private byte site;
-        private int aptitude;
-
-        /**
-         * Constructeur
-         *
-         * @param messageType
-         * @param site
-         * @param aptitude    facultatif pour des messages de type MESSAGE_RESULT
-         */
-        public Message(MessageType messageType, byte site, int aptitude) {
-            this.messageType = messageType;
-            this.site = site;
-            this.aptitude = aptitude;
-        }
-
-        public MessageType getMessageType() {
-            return messageType;
-        }
-
-        public byte getSite() {
-            return site;
-        }
-
-        public int getAptitude() {
-            return aptitude;
-        }
-    }
-
     private DatagramSocket socket;
     private HashMap<Byte, InetSocketAddress> network; // carnet d'adresses
 
@@ -70,29 +14,16 @@ public class UDPController {
      * Construit UDPController à partir de son numéro de site (l'adresse est définie dans sites.properties)
      *
      * @param siteId
+     * @param network
      */
-    public UDPController(byte siteId) {
-
-        // récupération de la liste des serveurs
-        Properties properties = new Properties();
-        network = new HashMap<>();
-        try {
-            properties.load(this.getClass().getClassLoader().getResourceAsStream("sites.properties"));
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-        for (String name : properties.stringPropertyNames()) {
-            String[] address = properties.getProperty(name).split(":");
-            network.put(Byte.parseByte(name), new InetSocketAddress(address[0], Integer.parseInt(address[1])));
-        }
+    public UDPController(byte siteId, HashMap<Byte, InetSocketAddress> network) {
+        this.network = network;
 
         // ouverture du socket
         try {
             socket = new DatagramSocket(network.get(siteId).getPort());
         } catch (SocketException e) {
             e.printStackTrace();
-            return;
         }
     }
 
@@ -102,17 +33,22 @@ public class UDPController {
      * @return int
      */
     public int getAptitude() {
-        return socket.getPort() + socket.getInetAddress().getAddress()[3];
+        try {
+            return socket.getPort() + InetAddress.getLocalHost().getAddress()[3];
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+            return -1;
+        }
     }
 
     /**
-     * Envoie un message de type MESSAGE_RESULT
+     * Envoie un message de type RESULT
      *
      * @param destination destinataire du message (numéro de site)
      * @param electedSite site elu à transmettre
      */
     public void sendResult(byte destination, byte electedSite) {
-        byte[] array = {MessageType.MESSAGE_RESULT.getByte(), electedSite};
+        byte[] array = {Message.MessageType.RESULT.getByte(), electedSite};
 
         try {
             socket.send(new DatagramPacket(array, array.length, network.get(destination)));
@@ -122,14 +58,14 @@ public class UDPController {
     }
 
     /**
-     * Envoie un message de type MESSAGE_ANNOUNCE
+     * Envoie un message de type ANNOUNCE
      *
      * @param destination destinataire du message (numéro de site)
      * @param bestSite    meilleur candidat à transmettre
      * @param aptitude    aptitude du candidat
      */
     public void sendAnnounce(byte destination, byte bestSite, int aptitude) {
-        byte[] array = {MessageType.MESSAGE_ANNOUNCE.getByte(), bestSite, (byte) (aptitude >> 24), (byte) (aptitude
+        byte[] array = {Message.MessageType.ANNOUNCE.getByte(), bestSite, (byte) (aptitude >> 24), (byte) (aptitude
                 >> 16), (byte) (aptitude >> 8), (byte) aptitude};
 
         try {
@@ -155,11 +91,25 @@ public class UDPController {
 
         byte[] data = packet.getData();
 
-        MessageType type = null;
-        if (data[0] == MessageType.MESSAGE_ANNOUNCE.getByte()) {
-            type = MessageType.MESSAGE_ANNOUNCE;
-        } else if (data[1] == MessageType.MESSAGE_RESULT.getByte()) {
-            type = MessageType.MESSAGE_RESULT;
+        Message.MessageType type = null;
+        if (data[0] == Message.MessageType.ANNOUNCE.getByte()) {
+            type = Message.MessageType.ANNOUNCE;
+        } else if (data[0] == Message.MessageType.RESULT.getByte()) {
+            type = Message.MessageType.RESULT;
+        } else if(data[0] == Message.MessageType.PONG.getByte()) {
+            type = Message.MessageType.PONG;
+        } else if(data[0] == Message.MessageType.PING.getByte()) {
+            type = Message.MessageType.PING;
+
+            // Répond immédiatement au ping
+            byte[] array = {Message.MessageType.PONG.getByte()};
+            try {
+                socket.send(new DatagramPacket(array, array.length, packet.getSocketAddress()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("Unknown message type received !");
         }
 
         return new Message(type, data[1],

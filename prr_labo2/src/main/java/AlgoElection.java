@@ -1,45 +1,40 @@
+import java.net.InetSocketAddress;
+import java.util.HashMap;
+
 /*
  * Algorithme d'élection en anneau avec panne des sites possibles.
  * Une seule élection peut avoir lieu
  * - En cas de reprise de panne un site ne peut pas interrompre une élection
  * - En cas de panne de l'élu une nouvelle élection est démarrer
  */
-public class AlgoElection {
-
-    private Site me; // Site courant
-    private Site neighbour; // Site voisin
-    private Site coordinator; // Site élu
+public class AlgoElection implements Runnable {
+    private byte me; // Site courant
+    private byte neighbour; // Site voisin
+    private byte coordinator; // Site élu
     private boolean annoucementInProgess; // élection en cours
     private UDPController udpController;
+    private HashMap<Byte, Integer> election; // paires num_site <---> aptitude
 
     /**
      * Constructeur
      *
-     * @param num numéro du site local
+     * @param num       numéro du site local
+     * @param neighbour numéro du site voisin
      */
-    public AlgoElection(byte num) {
+    public AlgoElection(byte num, byte neighbour, UDPController udpController) {
         this.annoucementInProgess = false;
-        this.udpController = new UDPController(num);
+        this.neighbour = neighbour;
+        election = new HashMap<>();
+        me = num;
+        this.udpController = udpController;
     }
 
-    /**
-     * Initialisation du site. Un site contient les informations :
-     * - no site
-     * - aptitude
-     *
-     * @param me        le site courant
-     * @param neighbour le site voisin
-     */
-    public void initialise(Site me, Site neighbour) {
-        this.me = me;
-        this.neighbour = neighbour;
-    }
 
     /**
      * Lancement de l'élection au démarrage
      */
     public void start() {
-        udpController.sendAnnounce(neighbour.getNoSite(), me.getNoSite(), udpController.getAptitude());
+        udpController.sendAnnounce(neighbour, me, udpController.getAptitude());
         annoucementInProgess = true;
     }
 
@@ -47,19 +42,19 @@ public class AlgoElection {
      * Annonce reçu d'un autre site, traitement de l'information.
      *
      * @param otherSite
+     * @param otherAptitude
      */
-    public void annoucement(Site otherSite) {
-        if (me.getAptitude() > otherSite.getAptitude()
-                || (me.getAptitude() == otherSite.getAptitude()
-                && me.getNoSite() > otherSite.getNoSite())) {
+    public void annoucement(byte otherSite, int otherAptitude) {
+        if (udpController.getAptitude() > otherAptitude
+                || (udpController.getAptitude() == otherAptitude && me > otherSite)) {
             if (!annoucementInProgess) {
-                udpController.sendAnnounce(neighbour.getNoSite(), me.getNoSite(), udpController.getAptitude());
+                udpController.sendAnnounce(neighbour, me, udpController.getAptitude());
                 annoucementInProgess = true;
             }
         } else if (me == otherSite) {
-            udpController.sendResult(neighbour.getNoSite(), me.getNoSite());
+            udpController.sendResult(neighbour, me);
         } else {
-            udpController.sendAnnounce(neighbour.getNoSite(), otherSite.getNoSite(), otherSite.getAptitude());
+            udpController.sendAnnounce(neighbour, otherSite, otherAptitude);
             annoucementInProgess = true;
         }
     }
@@ -69,11 +64,11 @@ public class AlgoElection {
      *
      * @param elu Site élu
      */
-    public void resultat(Site elu) {
+    public void resultat(byte elu) {
         this.coordinator = elu;
         annoucementInProgess = false;
-        if (this.coordinator.getNoSite() != me.getNoSite()) {
-            udpController.sendResult(neighbour.getNoSite(), coordinator.getNoSite());
+        if (this.coordinator != me) {
+            udpController.sendResult(neighbour, coordinator);
         }
     }
 
@@ -82,8 +77,21 @@ public class AlgoElection {
      *
      * @return l'élu
      */
-    public Site getCoordinator() {
+    public byte getCoordinator() {
         return coordinator;
     }
 
+    @Override
+    public void run() {
+        // boucle d'exécution de l'élection
+        while(true) {
+            Message message = udpController.listen();
+
+            if(message.getMessageType() == Message.MessageType.ANNOUNCE) {
+                annoucement(message.getSite(), message.getAptitude());
+            } else if (message.getMessageType() == Message.MessageType.RESULT) {
+                resultat(message.getSite());
+            }
+        }
+    }
 }

@@ -1,9 +1,9 @@
 /*
-* Un site se caractérise par son numéro et son aptitude.
-* L'aptitude est calculée selon le numéro de port du site et le dernier octet de son adresse IP
-*   <aptitude = port + octet>
-*
-*/
+ * Un site se caractérise par son numéro et son aptitude.
+ * L'aptitude est calculée selon le numéro de port du site et le dernier octet de son adresse IP
+ *   <aptitude = port + octet>
+ *
+ */
 public class Site {
     private int aptitude;
     private byte noSite;
@@ -16,9 +16,9 @@ public class Site {
      * @param octet dernier octet de l'adresse IP du site
      */
     public Site(byte noSite, int port, int octet) {
-       this.noSite = noSite;
-       // Calcul de l'aptitude du site (immuable)
-       this.aptitude = port+octet;
+        this.noSite = noSite;
+        // Calcul de l'aptitude du site (immuable)
+        this.aptitude = port+octet;
     }
 
     public int getAptitude() {
