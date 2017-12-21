@@ -1,3 +1,4 @@
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 
 /*
@@ -85,7 +86,12 @@ public class AlgoElection implements Runnable {
     public void run() {
         // boucle d'exécution de l'élection
         while(true) {
-            Message message = udpController.listen();
+            Message message = null;
+            try {
+                message = udpController.listen();
+            } catch (SocketTimeoutException e) {
+                // rien reçu dans la dernière seconde
+            }
 
             if(message.getMessageType() == Message.MessageType.ANNOUNCE) {
 //                annoucement(message.getSite(), message.getAptitude());

@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.*;
 import java.util.HashMap;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Project : prr_labo2
@@ -82,7 +83,7 @@ public class UDPController {
      *
      * @return Message
      */
-    public Message listen() {
+    public Message listen() throws SocketTimeoutException {
         DatagramPacket packet = new DatagramPacket(new byte[6], 6);
 
         try {
