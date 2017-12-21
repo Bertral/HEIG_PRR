@@ -12,17 +12,10 @@ public class Site {
      * Constructeur d'un site. L'aptitude d'un site est calculé selon son numéro de port et le dernier octet de
      * son adresse IP.
      * @param noSite no du site
-     * @param port port du site
-     * @param octet dernier octet de l'adresse IP du site
      */
-    public Site(byte noSite, int port, int octet) {
+    public Site(byte noSite, int aptitude) {
         this.noSite = noSite;
-        // Calcul de l'aptitude du site (immuable)
-        this.aptitude = port+octet;
-    }
-
-    public int getAptitude() {
-        return aptitude;
+        this.aptitude = aptitude;
     }
 
     public void setAptitude(int aptitude) {
@@ -39,5 +32,9 @@ public class Site {
 
     public boolean equals(Site otherSite){
         return noSite == otherSite.noSite;
+    }
+
+    public int getAptitude() {
+        return aptitude;
     }
 }

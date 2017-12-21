@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -74,7 +75,8 @@ public class UDPController {
      * @return Message
      */
     public Message listen() throws SocketTimeoutException {
-        DatagramPacket packet = new DatagramPacket(new byte[2001], 2001);
+        DatagramPacket packet = new DatagramPacket(new byte[1 + Main.NUMBER_OF_SITES * 5], 1 + Main.NUMBER_OF_SITES *
+                5);
 
         try {
             socket.receive(packet);
@@ -83,8 +85,6 @@ public class UDPController {
         }
 
         byte[] data = packet.getData();
-
-        // num of bytes = 1 type + 1 num + 4 apt + 1 num + 4 apt + 1 num + 4 apt + 1 num + 4 apt
 
         Message.MessageType type = null;
         if (data[0] == Message.MessageType.ANNOUNCE.getByte()) {
@@ -106,6 +106,13 @@ public class UDPController {
             }
         } else {
             System.out.println("Unknown message type received !");
+        }
+
+        Message message = new Message(type, new ArrayList<>());
+        int numberOfSites = (packet.getLength() - 1) / 5;
+
+        for(int i = 0; i < numberOfSites; i++) {
+            message.getSites().add(new Site(data[1 + 5*i], data[2] << 24 | (data[3] & 0xFF) << 16 | (data[4] & 0xFF) << 8 | (data[5] & 0xFF)));
         }
 
         return new Message(type, data[1],
