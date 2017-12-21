@@ -1,7 +1,6 @@
 import java.io.IOException;
 import java.net.*;
 import java.util.HashMap;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Project : prr_labo2
@@ -45,31 +44,22 @@ public class UDPController {
     }
 
     /**
-     * Envoie un message de type RESULT
+     * Envoie un message
      *
      * @param destination destinataire du message (numéro de site)
-     * @param electedSite site elu à transmettre
+     * @param message     message à transmettre
      */
-    public void sendResult(byte destination, byte electedSite) {
-        byte[] array = {Message.MessageType.RESULT.getByte(), electedSite};
+    public void send(byte destination, Message message) {
+        byte[] array = new byte[1 + message.getSites().size() * 5];
+        array[0] = message.getMessageType().getByte();
 
-        try {
-            socket.send(new DatagramPacket(array, array.length, network.get(destination)));
-        } catch (IOException e) {
-            e.printStackTrace();
+        for (int i = 0; i < message.getSites().size(); i++) {
+            array[1 + i * 5] = message.getSites().get(i).getNoSite(); // Numéro de site
+            array[1 + i * 5 + 1] = (byte) (message.getSites().get(i).getAptitude() >> 24); // byte 1 aptitude
+            array[1 + i * 5 + 2] = (byte) (message.getSites().get(i).getAptitude() >> 16); // byte 2 aptitude
+            array[1 + i * 5 + 3] = (byte) (message.getSites().get(i).getAptitude() >> 8); // byte 3 aptitude
+            array[1 + i * 5 + 4] = (byte) (message.getSites().get(i).getAptitude()); // byte 4 aptitude
         }
-    }
-
-    /**
-     * Envoie un message de type ANNOUNCE
-     *
-     * @param destination destinataire du message (numéro de site)
-     * @param bestSite    meilleur candidat à transmettre
-     * @param aptitude    aptitude du candidat
-     */
-    public void sendAnnounce(byte destination, byte bestSite, int aptitude) {
-        byte[] array = {Message.MessageType.ANNOUNCE.getByte(), bestSite, (byte) (aptitude >> 24), (byte) (aptitude
-                >> 16), (byte) (aptitude >> 8), (byte) aptitude};
 
         try {
             socket.send(new DatagramPacket(array, array.length, network.get(destination)));
@@ -84,7 +74,7 @@ public class UDPController {
      * @return Message
      */
     public Message listen() throws SocketTimeoutException {
-        DatagramPacket packet = new DatagramPacket(new byte[6], 6);
+        DatagramPacket packet = new DatagramPacket(new byte[2001], 2001);
 
         try {
             socket.receive(packet);
@@ -101,10 +91,10 @@ public class UDPController {
             type = Message.MessageType.ANNOUNCE;
         } else if (data[0] == Message.MessageType.RESULT.getByte()) {
             type = Message.MessageType.RESULT;
-        } else if(data[0] == Message.MessageType.PONG.getByte()) {
+        } else if (data[0] == Message.MessageType.PONG.getByte()) {
             // UDPController ne devrait pas recevoir de PONG, car il n'emmet pas de PING
             type = Message.MessageType.PONG;
-        } else if(data[0] == Message.MessageType.PING.getByte()) {
+        } else if (data[0] == Message.MessageType.PING.getByte()) {
             type = Message.MessageType.PING;
 
             // Répond immédiatement au ping
