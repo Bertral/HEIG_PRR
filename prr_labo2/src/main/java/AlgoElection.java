@@ -1,4 +1,5 @@
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /*
@@ -8,12 +9,14 @@ import java.util.HashMap;
  * - En cas de panne de l'élu une nouvelle élection est démarrer
  */
 public class AlgoElection implements Runnable {
-    private byte me; // Site courant
+    enum Phase {ANNONCE, RESULTAT}
+
+    private Site me; // Site courant
     private byte neighbour; // Site voisin
     private byte coordinator; // Site élu
     private boolean annoucementInProgess; // élection en cours
     private UDPController udpController;
-    private HashMap<Byte, Integer> election; // paires num_site <---> aptitude
+    private Phase phase;
 
     /**
      * Constructeur
@@ -24,8 +27,8 @@ public class AlgoElection implements Runnable {
     public AlgoElection(byte num, byte neighbour, UDPController udpController) {
         this.annoucementInProgess = false;
         this.neighbour = neighbour;
-        election = new HashMap<>();
-        me = num;
+        phase = Phase.ANNONCE;
+        
         this.udpController = udpController;
         start();
     }
@@ -45,8 +48,11 @@ public class AlgoElection implements Runnable {
      * @param otherSite
      * @param otherAptitude
      */
-    public void annoucement(byte otherSite, int otherAptitude) {
-        if (udpController.getAptitude() > otherAptitude
+    public void annoucement(ArrayList<Site> election) {
+        if(election.contains(me)){
+            // TODO définir l'elu
+        }
+     /*   if (udpController.getAptitude() > otherAptitude
                 || (udpController.getAptitude() == otherAptitude && me > otherSite)) {
             if (!annoucementInProgess) {
                 udpController.sendAnnounce(neighbour, me, udpController.getAptitude());
@@ -57,7 +63,7 @@ public class AlgoElection implements Runnable {
         } else {
             udpController.sendAnnounce(neighbour, otherSite, otherAptitude);
             annoucementInProgess = true;
-        }
+        }*/
     }
 
     /**
