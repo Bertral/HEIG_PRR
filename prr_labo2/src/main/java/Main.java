@@ -13,6 +13,7 @@ import java.util.Properties;
  */
 public class Main {
     private static final int PING_TIMEOUT = 2000;
+    public static final int NUMBER_OF_SITES = 4;
 
     public static void main(String[] args) {
 
