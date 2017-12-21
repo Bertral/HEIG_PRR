@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Project : prr_labo2
@@ -5,6 +7,7 @@
  * Représente un message reçu par UDP
  */
 public class Message {
+
     /**
      * Représente un type de message
      */
@@ -29,31 +32,24 @@ public class Message {
     }
 
     private MessageType messageType;
-    private byte site;
-    private int aptitude;
+    private ArrayList<Site> sites;
 
     /**
      * Constructeur
      *
      * @param messageType
-     * @param site
-     * @param aptitude    facultatif pour des messages de type RESULT
+     * @param sitesAptitudes
      */
-    public Message(MessageType messageType, byte site, int aptitude) {
+    public Message(MessageType messageType, ArrayList<Site> sitesAptitudes) {
         this.messageType = messageType;
-        this.site = site;
-        this.aptitude = aptitude;
+        this.sites = sitesAptitudes;
     }
 
     public MessageType getMessageType() {
         return messageType;
     }
 
-    public byte getSite() {
-        return site;
-    }
-
-    public int getAptitude() {
-        return aptitude;
+    public ArrayList<Site> getSites() {
+        return sites;
     }
 }

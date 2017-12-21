@@ -7,6 +7,7 @@ import java.util.HashMap;
  * Date : 14.12.17
  */
 public class UDPController {
+    private static final int SOCKET_TIMEOUT = 1000;
     private DatagramSocket socket;
     private HashMap<Byte, InetSocketAddress> network; // carnet d'adresses
 
@@ -22,6 +23,7 @@ public class UDPController {
         // ouverture du socket
         try {
             socket = new DatagramSocket(network.get(siteId).getPort());
+            socket.setSoTimeout(SOCKET_TIMEOUT);
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -91,12 +93,15 @@ public class UDPController {
 
         byte[] data = packet.getData();
 
+        // num of bytes = 1 type + 1 num + 4 apt + 1 num + 4 apt + 1 num + 4 apt + 1 num + 4 apt
+
         Message.MessageType type = null;
         if (data[0] == Message.MessageType.ANNOUNCE.getByte()) {
             type = Message.MessageType.ANNOUNCE;
         } else if (data[0] == Message.MessageType.RESULT.getByte()) {
             type = Message.MessageType.RESULT;
         } else if(data[0] == Message.MessageType.PONG.getByte()) {
+            // UDPController ne devrait pas recevoir de PONG, car il n'emmet pas de PING
             type = Message.MessageType.PONG;
         } else if(data[0] == Message.MessageType.PING.getByte()) {
             type = Message.MessageType.PING;

@@ -1,4 +1,3 @@
-import java.net.InetSocketAddress;
 import java.util.HashMap;
 
 /*
@@ -27,6 +26,7 @@ public class AlgoElection implements Runnable {
         election = new HashMap<>();
         me = num;
         this.udpController = udpController;
+        start();
     }
 
 
@@ -88,9 +88,9 @@ public class AlgoElection implements Runnable {
             Message message = udpController.listen();
 
             if(message.getMessageType() == Message.MessageType.ANNOUNCE) {
-                annoucement(message.getSite(), message.getAptitude());
+//                annoucement(message.getSite(), message.getAptitude());
             } else if (message.getMessageType() == Message.MessageType.RESULT) {
-                resultat(message.getSite());
+//                resultat(message.getSite());
             }
         }
     }
