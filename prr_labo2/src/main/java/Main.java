@@ -53,7 +53,7 @@ public class Main {
         try {
             DatagramSocket pingSocket = new DatagramSocket();
             pingSocket.setSoTimeout(PING_TIMEOUT);
-            byte[] ping = {MessageType.MessageType.PING.getByte()};
+            byte[] ping = {Message.MessageType.PING.getByte()};
 
             // lance périodiquement des ping
             while (true) {
@@ -72,7 +72,7 @@ public class Main {
                         do {
                             System.out.println("Waiting for ping response ...");
                             pingSocket.receive(pong);
-                        } while (pong.getData()[0] != MessageType.MessageType.PONG.getByte());
+                        } while (pong.getData()[0] != Message.MessageType.PONG.getByte());
                         System.out.println("Coordinator "+ coordinator+" is alive");
                     } catch (SocketTimeoutException e) {
                         // Si le pong n'est pas reçu en réponse, lance l'élection

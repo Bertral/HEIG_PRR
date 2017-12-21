@@ -8,7 +8,7 @@ import java.util.HashMap;
  * Date : 14.12.17
  */
 public class UDPController {
-    private static final int SOCKET_TIMEOUT = 1000;
+    private static final int SOCKET_TIMEOUT = 200;
     private DatagramSocket socket;
     private HashMap<Byte, InetSocketAddress> network; // carnet d'adresses
 
@@ -50,7 +50,7 @@ public class UDPController {
      * @param destination destinataire du message (numéro de site)
      * @param message     message à transmettre
      */
-    public void send(byte destination, MessageType message) {
+    public void send(byte destination, Message message) {
         byte[] array = new byte[1 + message.getSites().size() * 5];
         array[0] = message.getMessageType().getByte();
 
@@ -74,48 +74,59 @@ public class UDPController {
      *
      * @return Message
      */
-    public MessageType listen() throws SocketTimeoutException {
+    public Message listen() throws IOException {
         DatagramPacket packet = new DatagramPacket(new byte[1 + Main.NUMBER_OF_SITES * 5], 1 + Main.NUMBER_OF_SITES *
                 5);
 
-        try {
-            socket.receive(packet);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        socket.receive(packet);
 
         byte[] data = packet.getData();
 
-        MessageType.MessageType type = null;
-        if (data[0] == MessageType.MessageType.ANNOUNCE.getByte()) {
-            type = MessageType.MessageType.ANNOUNCE;
-        } else if (data[0] == MessageType.MessageType.RESULT.getByte()) {
-            type = MessageType.MessageType.RESULT;
-        } else if (data[0] == MessageType.MessageType.PONG.getByte()) {
+        Message.MessageType type = null;
+        if (data[0] == Message.MessageType.ANNOUNCE.getByte()) {
+            type = Message.MessageType.ANNOUNCE;
+        } else if (data[0] == Message.MessageType.RESULT.getByte()) {
+            type = Message.MessageType.RESULT;
+        } else if (data[0] == Message.MessageType.PONG.getByte()) {
             // UDPController ne devrait pas recevoir de PONG, car il n'emmet pas de PING
-            type = MessageType.MessageType.PONG;
-        } else if (data[0] == MessageType.MessageType.PING.getByte()) {
-            type = MessageType.MessageType.PING;
+            type = Message.MessageType.PONG;
+        } else if (data[0] == Message.MessageType.PING.getByte()) {
+            type = Message.MessageType.PING;
 
             // Répond immédiatement au ping
-            byte[] array = {MessageType.MessageType.PONG.getByte()};
+            byte[] array = {Message.MessageType.PONG.getByte()};
             try {
                 socket.send(new DatagramPacket(array, array.length, packet.getSocketAddress()));
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        } else if (data[0] == Message.MessageType.CHECKOUT.getByte()) {
+            type = Message.MessageType.CHECKOUT;
         } else {
             System.out.println("Unknown message type received !");
         }
 
-        MessageType message = new MessageType(type, new ArrayList<>());
-        int numberOfSites = (packet.getLength() - 1) / 5;
+        Message message = new Message(type, new ArrayList<>());
 
-        for(int i = 0; i < numberOfSites; i++) {
-            message.getSites().add(new Site(data[1 + 5*i], data[2] << 24 | (data[3] & 0xFF) << 16 | (data[4] & 0xFF) << 8 | (data[5] & 0xFF)));
+        if (message.getMessageType() == Message.MessageType.ANNOUNCE
+                || message.getMessageType() == Message.MessageType.RESULT) {
+            // Envoie une quittance immédiatement
+            byte[] array = {Message.MessageType.CHECKOUT.getByte()};
+            try {
+                socket.send(new DatagramPacket(array, array.length, packet.getSocketAddress()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            for (int i = 0; i < (packet.getLength() - 1) / 5; i++) {
+                message.getSites().add(new Site(data[1 + 5 * i],
+                        data[1 + 5 * i + 1] << 24
+                        | (data[1 + 5 * i + 2] & 0xFF) << 16
+                        | (data[1 + 5 * i + 3] & 0xFF) << 8
+                        | (data[1 + 5 * i + 4] & 0xFF)));
+            }
         }
 
-        return new MessageType(type, data[1],
-                data[2] << 24 | (data[3] & 0xFF) << 16 | (data[4] & 0xFF) << 8 | (data[5] & 0xFF));
+        return message;
     }
 }

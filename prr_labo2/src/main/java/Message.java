@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 public class Message {
     /**
      * Représente un type de message
@@ -7,7 +9,7 @@ public class Message {
         RESULT((byte) 1),
         PING((byte) 2),
         PONG((byte) 3),
-        QUITTANCE((byte) 4);
+        CHECKOUT((byte) 4);
 
         private byte value;
 
@@ -24,12 +26,32 @@ public class Message {
     }
 
     private MessageType messageType;
+    private ArrayList<Site> sites;
 
-    public Message(MessageType messageType){
+    public Message(MessageType messageType, ArrayList<Site> sitesAptitudes) {
         this.messageType = messageType;
     }
 
     public MessageType getMessageType() {
         return messageType;
+    }
+
+    public ArrayList<Site> getSites() {
+        return sites;
+    }
+
+    public byte getElu() {
+        if (sites.isEmpty()) {
+            return -1;
+        }
+
+        Site maxSite = sites.get(0);
+        for (Site s : sites) {
+            if (s.getAptitude() > maxSite.getAptitude() || ((s.getAptitude() == maxSite.getAptitude()) && (s
+                    .getNoSite() > maxSite.getNoSite()))) {
+                maxSite = s;
+            }
+        }
+        return maxSite.getNoSite();
     }
 }
