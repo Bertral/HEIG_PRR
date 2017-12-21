@@ -1,13 +1,4 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-
-/**
- * Project : prr_labo2
- * Date : 15.12.17
- * Représente un message reçu par UDP
- */
 public class Message {
-
     /**
      * Représente un type de message
      */
@@ -15,7 +6,8 @@ public class Message {
         ANNOUNCE((byte) 0),
         RESULT((byte) 1),
         PING((byte) 2),
-        PONG((byte) 3);
+        PONG((byte) 3),
+        QUITTANCE((byte) 4);
 
         private byte value;
 
@@ -32,24 +24,12 @@ public class Message {
     }
 
     private MessageType messageType;
-    private ArrayList<Site> sites;
 
-    /**
-     * Constructeur
-     *
-     * @param messageType
-     * @param sitesAptitudes
-     */
-    public Message(MessageType messageType, ArrayList<Site> sitesAptitudes) {
+    public Message(MessageType messageType){
         this.messageType = messageType;
-        this.sites = sitesAptitudes;
     }
 
     public MessageType getMessageType() {
         return messageType;
-    }
-
-    public ArrayList<Site> getSites() {
-        return sites;
     }
 }

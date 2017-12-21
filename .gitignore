@@ -1,2 +1,5 @@
 **/.idea
 *.iml
+
+*prr_labo1/
+**/target/

@@ -1,6 +1,5 @@
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 /*
  * Algorithme d'élection en anneau avec panne des sites possibles.
@@ -14,9 +13,9 @@ public class AlgoElection implements Runnable {
     private Site me; // Site courant
     private byte neighbour; // Site voisin
     private byte coordinator; // Site élu
-    private boolean annoucementInProgess; // élection en cours
     private UDPController udpController;
     private Phase phase;
+    private MessageType lastMessage;
 
     /**
      * Constructeur
@@ -25,10 +24,9 @@ public class AlgoElection implements Runnable {
      * @param neighbour numéro du site voisin
      */
     public AlgoElection(byte num, byte neighbour, UDPController udpController) {
-        this.annoucementInProgess = false;
         this.neighbour = neighbour;
         phase = Phase.ANNONCE;
-        
+        this.me = new Site(num, udpController.getAptitude());
         this.udpController = udpController;
         start();
     }
@@ -38,46 +36,76 @@ public class AlgoElection implements Runnable {
      * Lancement de l'élection au démarrage
      */
     public void start() {
-        udpController.sendAnnounce(neighbour, me, udpController.getAptitude());
-        annoucementInProgess = true;
+        ArrayList<Site> election = new ArrayList<>();
+        election.add(me);
+        // Sauvegarde du dernier message envoyé
+        lastMessage = new MessageType(MessageType.MessageType.ANNOUNCE, election);
+        udpController.send(neighbour, lastMessage);
+
+        phase = Phase.ANNONCE;
     }
 
     /**
      * Annonce reçu d'un autre site, traitement de l'information.
      *
-     * @param otherSite
-     * @param otherAptitude
+     * @param election site actuellement dans l'election
      */
     public void annoucement(ArrayList<Site> election) {
         if(election.contains(me)){
-            // TODO définir l'elu
-        }
-     /*   if (udpController.getAptitude() > otherAptitude
-                || (udpController.getAptitude() == otherAptitude && me > otherSite)) {
-            if (!annoucementInProgess) {
-                udpController.sendAnnounce(neighbour, me, udpController.getAptitude());
-                annoucementInProgess = true;
+            // définir l'elu
+            if(!election.isEmpty()){
+                Site elu = election.get(0);
+                for(Site s : election){
+                    if(s.getAptitude() > elu.getAptitude() ||
+                            ( (s.getAptitude() == elu.getAptitude())
+                                    && (s.getNoSite() > elu.getNoSite())) ){
+                        elu = s;
+                    }
+                }
+                ArrayList<Site> resultat = new ArrayList<>();
+                resultat.add(elu);
+                // Dernier message envoyé
+                lastMessage = new MessageResult(election,elu.getNoSite());
+                udpController.send(neighbour, lastMessage);
+                phase = Phase.RESULTAT;
             }
-        } else if (me == otherSite) {
-            udpController.sendResult(neighbour, me);
-        } else {
-            udpController.sendAnnounce(neighbour, otherSite, otherAptitude);
-            annoucementInProgess = true;
-        }*/
+            else{
+                election.add(me);
+                // Dernier message envoyé
+                lastMessage = new MessageType(MessageType.MessageType.ANNOUNCE, election);
+                udpController.send(neighbour, lastMessage);
+                phase = Phase.ANNONCE;
+            }
+        }
     }
 
     /**
      * Réception du résultat de l'élection
      *
-     * @param elu Site élu
+     * @param election
      */
-    public void resultat(byte elu) {
-        this.coordinator = elu;
-        annoucementInProgess = false;
-        if (this.coordinator != me) {
-            udpController.sendResult(neighbour, coordinator);
+    public void resultat(ArrayList<Site> election, byte elu) {
+        if(!election.contains(me)){
+            // 2 elections en cours.. redémarre l'élection
+            if(phase == Phase.RESULTAT && coordinator != elu){
+                election = new ArrayList<>();
+                election.add(me);
+                // Dernier message envoyé
+                lastMessage = new MessageType(MessageType.MessageType.ANNOUNCE, election);
+                udpController.send(neighbour,lastMessage);
+                phase = Phase.ANNONCE;
+            }
+            else if(phase == Phase.ANNONCE){
+                coordinator = elu;
+                election.add(me);
+                // Dernier message envoyé
+                lastMessage = new MessageResult(election, elu);
+                udpController.send(neighbour, lastMessage);
+                phase = Phase.RESULTAT;
+            }
         }
     }
+
 
     /**
      * Retourne l'élu actuelle connu
@@ -88,22 +116,31 @@ public class AlgoElection implements Runnable {
         return coordinator;
     }
 
+
+
+
     @Override
     public void run() {
         // boucle d'exécution de l'élection
         while(true) {
-            Message message = null;
+            MessageType message = null;
             try {
+                // TODO Gérer le timerQuittance et le TimerCycle
                 message = udpController.listen();
+
+                if(message.getMessageType() == Message.MessageType.QUITTANCE){
+                    lastMessage = null;
+                } else if(message.getMessageType() == MessageType.MessageType.ANNOUNCE) {
+                    // TODO envoyer une quittance
+                    annoucement(message.getSites());
+                } else if (message.getMessageType() == MessageType.MessageType.RESULT) {
+                    // TODO envoyer une quittance
+                    resultat(((MessageResult)message).getSites(), ((MessageResult)message).getElu());
+                }
             } catch (SocketTimeoutException e) {
                 // rien reçu dans la dernière seconde
             }
 
-            if(message.getMessageType() == Message.MessageType.ANNOUNCE) {
-//                annoucement(message.getSite(), message.getAptitude());
-            } else if (message.getMessageType() == Message.MessageType.RESULT) {
-//                resultat(message.getSite());
-            }
         }
     }
 }

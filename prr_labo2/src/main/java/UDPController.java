@@ -50,7 +50,7 @@ public class UDPController {
      * @param destination destinataire du message (numéro de site)
      * @param message     message à transmettre
      */
-    public void send(byte destination, Message message) {
+    public void send(byte destination, MessageType message) {
         byte[] array = new byte[1 + message.getSites().size() * 5];
         array[0] = message.getMessageType().getByte();
 
@@ -74,7 +74,7 @@ public class UDPController {
      *
      * @return Message
      */
-    public Message listen() throws SocketTimeoutException {
+    public MessageType listen() throws SocketTimeoutException {
         DatagramPacket packet = new DatagramPacket(new byte[1 + Main.NUMBER_OF_SITES * 5], 1 + Main.NUMBER_OF_SITES *
                 5);
 
@@ -86,19 +86,19 @@ public class UDPController {
 
         byte[] data = packet.getData();
 
-        Message.MessageType type = null;
-        if (data[0] == Message.MessageType.ANNOUNCE.getByte()) {
-            type = Message.MessageType.ANNOUNCE;
-        } else if (data[0] == Message.MessageType.RESULT.getByte()) {
-            type = Message.MessageType.RESULT;
-        } else if (data[0] == Message.MessageType.PONG.getByte()) {
+        MessageType.MessageType type = null;
+        if (data[0] == MessageType.MessageType.ANNOUNCE.getByte()) {
+            type = MessageType.MessageType.ANNOUNCE;
+        } else if (data[0] == MessageType.MessageType.RESULT.getByte()) {
+            type = MessageType.MessageType.RESULT;
+        } else if (data[0] == MessageType.MessageType.PONG.getByte()) {
             // UDPController ne devrait pas recevoir de PONG, car il n'emmet pas de PING
-            type = Message.MessageType.PONG;
-        } else if (data[0] == Message.MessageType.PING.getByte()) {
-            type = Message.MessageType.PING;
+            type = MessageType.MessageType.PONG;
+        } else if (data[0] == MessageType.MessageType.PING.getByte()) {
+            type = MessageType.MessageType.PING;
 
             // Répond immédiatement au ping
-            byte[] array = {Message.MessageType.PONG.getByte()};
+            byte[] array = {MessageType.MessageType.PONG.getByte()};
             try {
                 socket.send(new DatagramPacket(array, array.length, packet.getSocketAddress()));
             } catch (IOException e) {
@@ -108,14 +108,14 @@ public class UDPController {
             System.out.println("Unknown message type received !");
         }
 
-        Message message = new Message(type, new ArrayList<>());
+        MessageType message = new MessageType(type, new ArrayList<>());
         int numberOfSites = (packet.getLength() - 1) / 5;
 
         for(int i = 0; i < numberOfSites; i++) {
             message.getSites().add(new Site(data[1 + 5*i], data[2] << 24 | (data[3] & 0xFF) << 16 | (data[4] & 0xFF) << 8 | (data[5] & 0xFF)));
         }
 
-        return new Message(type, data[1],
+        return new MessageType(type, data[1],
                 data[2] << 24 | (data[3] & 0xFF) << 16 | (data[4] & 0xFF) << 8 | (data[5] & 0xFF));
     }
 }
