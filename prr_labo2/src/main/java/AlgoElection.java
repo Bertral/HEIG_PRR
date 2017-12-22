@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /*
  * Algorithme d'élection en anneau avec panne des sites possibles.
@@ -10,7 +11,7 @@ import java.util.ArrayList;
  */
 public class AlgoElection implements Runnable {
 
-    enum Phase {ANNONCE, RESULTAT}
+    enum Phase {ANNOUNCE, RESULT}
 
     private static final long CHECKOUT_TIMEOUT = 200;
     private static final long CYCLE_TIMEOUT = 2000;
@@ -19,7 +20,7 @@ public class AlgoElection implements Runnable {
     private byte coordinator; // Site élu
     private UDPController udpController;
     private Phase phase;
-    private Message lastMessage;
+    private Message lastSentMessage;
     private long timeOfLastSentMessage;
     private boolean waitingCheckout = false;
     private boolean waitingCycle = false;
@@ -27,12 +28,9 @@ public class AlgoElection implements Runnable {
     /**
      * Constructeur
      *
-     * @param num       numéro du site local
-     * @param neighbour numéro du site voisin
+     * @param num numéro du site local
      */
-    public AlgoElection(byte num, byte neighbour, UDPController udpController) {
-        this.neighbour = neighbour;
-        phase = Phase.ANNONCE;
+    public AlgoElection(byte num, UDPController udpController) {
         this.me = new Site(num, udpController.getAptitude());
         this.udpController = udpController;
         start();
@@ -40,16 +38,19 @@ public class AlgoElection implements Runnable {
 
 
     /**
-     * Lancement de l'élection au démarrage
+     * Lancement d'une élection
      */
     public void start() {
-        ArrayList<Site> election = new ArrayList<>();
-        election.add(me);
-        // Sauvegarde du dernier message envoyé
-        lastMessage = new Message(Message.MessageType.ANNOUNCE, election);
-        send(neighbour, lastMessage);
+        // réinitialise le voisin
+        neighbour = (byte) ((me.getNoSite() + 1) % Main.getSiteCount());
 
-        phase = Phase.ANNONCE;
+        // envoie le premier message
+        SortedSet<Site> election = new TreeSet<>();
+        election.add(me);
+        Message message = new Message(Message.MessageType.ANNOUNCE, election);
+        send(neighbour, message);
+
+        phase = Phase.ANNOUNCE;
     }
 
     /**
@@ -57,31 +58,25 @@ public class AlgoElection implements Runnable {
      *
      * @param election site actuellement dans l'election
      */
-    public void annoucement(ArrayList<Site> election) {
+    public void annoucement(SortedSet<Site> election) {
         if (election.contains(me)) {
-            // définir l'elu
-            if (!election.isEmpty()) {
-                Site elu = election.get(0);
-                for (Site s : election) {
-                    if (s.getAptitude() > elu.getAptitude() ||
-                            ((s.getAptitude() == elu.getAptitude())
-                                    && (s.getNoSite() > elu.getNoSite()))) {
-                        elu = s;
-                    }
+            // trouve l'élu
+            Site elu = me;
+            for (Site s : election) {
+                if (s.getAptitude() > elu.getAptitude() || (s.getAptitude() == elu.getAptitude()
+                        && s.getNoSite() > elu.getNoSite())) {
+                    elu = s;
                 }
-                ArrayList<Site> resultat = new ArrayList<>();
-                resultat.add(elu);
-                // Dernier message envoyé
-                lastMessage = new Message(Message.MessageType.RESULT, election);
-                send(neighbour, lastMessage);
-                phase = Phase.RESULTAT;
-            } else {
-                election.add(me);
-                // Dernier message envoyé
-                lastMessage = new Message(Message.MessageType.ANNOUNCE, election);
-                send(neighbour, lastMessage);
-                phase = Phase.ANNONCE;
             }
+            SortedSet<Site> resultat = new TreeSet<>();
+            resultat.add(elu);
+            send(neighbour, new Message(Message.MessageType.RESULT, resultat));
+            phase = Phase.RESULT;
+
+        } else {
+            election.add(me);
+            send(neighbour, new Message(Message.MessageType.ANNOUNCE, election));
+            phase = Phase.ANNOUNCE;
         }
     }
 
@@ -90,31 +85,31 @@ public class AlgoElection implements Runnable {
      *
      * @param election
      */
-    public void resultat(ArrayList<Site> election, byte elu) {
+    public void resultat(SortedSet<Site> election, byte elu) {
         if (!election.contains(me)) {
             // 2 elections en cours.. redémarre l'élection
-            if (phase == Phase.RESULTAT && coordinator != elu) {
-                election = new ArrayList<>();
+            if (phase == Phase.RESULT && coordinator != elu) {
+                election = new TreeSet<>();
                 election.add(me);
-                // Dernier message envoyé
-                lastMessage = new Message(Message.MessageType.ANNOUNCE, election);
-                send(neighbour, lastMessage);
-                phase = Phase.ANNONCE;
-            } else if (phase == Phase.ANNONCE) {
+                send(neighbour, new Message(Message.MessageType.ANNOUNCE, election));
+                phase = Phase.ANNOUNCE;
+            } else if (phase == Phase.ANNOUNCE) {
                 coordinator = elu;
                 election.add(me);
-                // Dernier message envoyé
-                lastMessage = new Message(Message.MessageType.RESULT, election);
-                send(neighbour, lastMessage);
-                phase = Phase.RESULTAT;
+                send(neighbour, new Message(Message.MessageType.RESULT, election));
+                phase = Phase.RESULT;
             }
+        } else {
+            coordinator = elu;
+            phase = Phase.ANNOUNCE;
         }
     }
 
     private void send(byte dest, Message message) {
-        udpController.send(dest, message);
+        lastSentMessage = message;
         waitingCheckout = true;
         timeOfLastSentMessage = System.currentTimeMillis();
+        udpController.send(dest, message);
     }
 
     /**
@@ -135,7 +130,6 @@ public class AlgoElection implements Runnable {
                 message = udpController.listen();
 
                 if (message.getMessageType() == Message.MessageType.CHECKOUT) {
-                    lastMessage = null;
                     waitingCheckout = false;
                 } else if (message.getMessageType() == Message.MessageType.ANNOUNCE) {
                     annoucement(message.getSites());
@@ -149,7 +143,15 @@ public class AlgoElection implements Runnable {
                 e.printStackTrace();
             } finally {
                 if (waitingCheckout && timeOfLastSentMessage - System.currentTimeMillis() > CHECKOUT_TIMEOUT) {
-                    // TODO : traiter le manque de quittance ici
+                    // retire le site en panne de la liste
+                    lastSentMessage.getSites().removeIf((s) -> s.getNoSite() == neighbour);
+
+                    // saute le site en panne
+                    neighbour = (byte) ((neighbour + 1) % Main.getSiteCount());
+
+                    // renvoie le message au site suivant
+                    send(neighbour, lastSentMessage);
+
                 } else if (waitingCycle && timeOfLastSentMessage - System.currentTimeMillis() > CYCLE_TIMEOUT) {
                     // TODO : traiter le timeout du cycle (on aurait dû recevoir le message ayant fait le tour)
                     // TODO : donner la bonne valeur à waitingCycle dans l'algorithme

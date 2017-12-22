@@ -12,8 +12,8 @@ import java.util.Properties;
  * Les sites doivent être indexés et adressés dans le fichier "sites.properties"
  */
 public class Main {
-    private static final int PING_TIMEOUT = 2000;
-    public static final int NUMBER_OF_SITES = 4;
+    private static final int PING_TIMEOUT = 1000;
+    private static byte siteCount;
 
     public static void main(String[] args) {
 
@@ -26,6 +26,7 @@ public class Main {
             e.printStackTrace();
             return;
         }
+        siteCount = (byte) properties.stringPropertyNames().size();
         for (String name : properties.stringPropertyNames()) {
             String[] address = properties.getProperty(name).split(":");
             network.put(Byte.parseByte(name), new InetSocketAddress(address[0], Integer.parseInt(address[1])));
@@ -33,18 +34,17 @@ public class Main {
 
         // lecture des arguments
         byte num;
-        byte neighbour;
         try {
             num = Byte.parseByte(args[0]);
-            neighbour = Byte.parseByte(args[1]);
         } catch (NumberFormatException e) {
-            System.out.println("Invalid arguments, must be : [local_site_id] [neighbour_id]");
+            System.out.println("Invalid argument, must be the site number in sites.properties (starting " +
+                    "from 0 to N-1)");
             return;
         }
 
         // initialise l'élection et le controlleur UDP
-        UDPController udpController = udpController = new UDPController(num, network);
-        AlgoElection election = election = new AlgoElection(num, neighbour, udpController);
+        UDPController udpController = new UDPController(num, network);
+        AlgoElection election = new AlgoElection(num, udpController);
 
 
         // lance l'écoute du réseau
@@ -69,24 +69,29 @@ public class Main {
                     DatagramPacket pong = new DatagramPacket(new byte[1], 1);
 
                     try {
+                        System.out.println("Waiting for ping response ...");
                         do {
-                            System.out.println("Waiting for ping response ...");
                             pingSocket.receive(pong);
                         } while (pong.getData()[0] != Message.MessageType.PONG.getByte());
-                        System.out.println("Coordinator "+ coordinator+" is alive");
+                        System.out.println("Coordinator " + coordinator + " is alive");
                     } catch (SocketTimeoutException e) {
                         // Si le pong n'est pas reçu en réponse, lance l'élection
-                        System.out.println("Ping timed out, coordinator "+coordinator+" is dead, starting election");
+                        System.out.println("Ping timed out, coordinator " + coordinator + " is dead, starting " +
+                                "election");
                         election.start();
                     }
                 }
 
-                Thread.sleep(5000);
+                Thread.sleep(500);
             }
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    public static byte getSiteCount() {
+        return siteCount;
     }
 }

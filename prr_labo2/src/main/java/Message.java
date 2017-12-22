@@ -1,4 +1,4 @@
-import java.util.ArrayList;
+import java.util.SortedSet;
 
 public class Message {
     /**
@@ -26,17 +26,18 @@ public class Message {
     }
 
     private MessageType messageType;
-    private ArrayList<Site> sites;
+    private SortedSet<Site> sites;
 
-    public Message(MessageType messageType, ArrayList<Site> sitesAptitudes) {
+    public Message(MessageType messageType, SortedSet<Site> sites) {
         this.messageType = messageType;
+        this.sites = sites;
     }
 
     public MessageType getMessageType() {
         return messageType;
     }
 
-    public ArrayList<Site> getSites() {
+    public SortedSet<Site> getSites() {
         return sites;
     }
 
@@ -45,10 +46,10 @@ public class Message {
             return -1;
         }
 
-        Site maxSite = sites.get(0);
+        Site maxSite = sites.first();
         for (Site s : sites) {
-            if (s.getAptitude() > maxSite.getAptitude() || ((s.getAptitude() == maxSite.getAptitude()) && (s
-                    .getNoSite() > maxSite.getNoSite()))) {
+            if (s.getAptitude() > maxSite.getAptitude() || (s.getAptitude() == maxSite.getAptitude() && s
+                    .getNoSite() > maxSite.getNoSite())) {
                 maxSite = s;
             }
         }
