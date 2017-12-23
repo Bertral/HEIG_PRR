@@ -81,8 +81,8 @@ public class Main {
                         election.start();
                     }
                 }
-
-                Thread.sleep(500);
+                int random = ((int) Math.random() + 2000) % 5000;
+                Thread.sleep(random);
             }
         } catch (IOException e) {
             e.printStackTrace();

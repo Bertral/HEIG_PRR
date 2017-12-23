@@ -37,6 +37,8 @@ public class UDPController {
      */
     public int getAptitude() {
         try {
+            int sock = socket.getPort();
+            int by = InetAddress.getLocalHost().getAddress()[3];
             return socket.getPort() + InetAddress.getLocalHost().getAddress()[3];
         } catch (UnknownHostException e) {
             e.printStackTrace();

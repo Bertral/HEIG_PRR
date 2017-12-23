@@ -33,6 +33,7 @@ public class AlgoElection implements Runnable {
     public AlgoElection(byte num, UDPController udpController) {
         this.me = new Site(num, udpController.getAptitude());
         this.udpController = udpController;
+        System.out.println("***** Site : "+ me.getNoSite() + " aptitude : " + me.getAptitude()+ " started *****");
         start();
     }
 
@@ -106,6 +107,7 @@ public class AlgoElection implements Runnable {
     }
 
     private void send(byte dest, Message message) {
+        System.out.println("Site : " + me.getNoSite() + " SEND => " + message.toString());
         lastSentMessage = message;
         waitingCheckout = true;
         timeOfLastSentMessage = System.currentTimeMillis();
@@ -128,13 +130,14 @@ public class AlgoElection implements Runnable {
             Message message = null;
             try {
                 message = udpController.listen();
-
+                System.out.println("Site : " + message.getMessageType().toString() + " RECEIVED => " + message.toString());
                 if (message.getMessageType() == Message.MessageType.CHECKOUT) {
                     waitingCheckout = false;
                 } else if (message.getMessageType() == Message.MessageType.ANNOUNCE) {
                     annoucement(message.getSites());
                 } else if (message.getMessageType() == Message.MessageType.RESULT) {
                     resultat(message.getSites(), message.getElu());
+                    timeOfLastSentMessage = System.currentTimeMillis();
                 }
             } catch (SocketTimeoutException e) {
                 // Simple timeout de réception, rien à faire.
@@ -155,6 +158,10 @@ public class AlgoElection implements Runnable {
                 } else if (waitingCycle && timeOfLastSentMessage - System.currentTimeMillis() > CYCLE_TIMEOUT) {
                     // TODO : traiter le timeout du cycle (on aurait dû recevoir le message ayant fait le tour)
                     // TODO : donner la bonne valeur à waitingCycle dans l'algorithme
+                    waitingCycle = false;
+                    lastSentMessage = null;
+                    // Le cas d'une élection qui n'a pu aboutir est traité par le cas de base. Le site à la demande d'un
+                    // elu refera sa demande, ce qui aura pour effet de relancer une élection.
                 }
             }
         }

@@ -55,4 +55,20 @@ public class Message {
         }
         return maxSite.getNoSite();
     }
+
+    @Override
+    public String toString() {
+        String string = "Type : " + messageType.toString();
+        if (!sites.isEmpty()) {
+            string += " Election < ";
+            for (Site s : sites) {
+                string += s.getNoSite() + " ";
+            }
+            string += ">";
+        }
+        if (getElu() > -1) {
+            string += " Elu : " + getElu();
+        }
+        return string;
+    }
 }
