@@ -80,7 +80,7 @@ public class Main {
                         // Si le pong n'est pas reçu en réponse, lance l'élection
 //                        System.out.println("Ping timed out, coordinator " + coordinator + " is dead, starting " +
 //                                "election");
-//                        election.start();
+                        election.start();
                     }
                 }
 

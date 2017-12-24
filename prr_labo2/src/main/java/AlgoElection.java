@@ -65,8 +65,10 @@ public class AlgoElection implements Runnable {
         if (message.getSites().contains(me)) {
             // si je suis déjà dans la liste ...
             // change l'élu du site
-            coordinator = message.getResultByte();
-            System.out.println("Elected site : " + coordinator);
+            synchronized (this) {
+                coordinator = message.getResultByte();
+                System.out.println("Elected site : " + coordinator);
+            }
 
             // envoie le message de résultat contenant l'élu
             SortedSet<Site> seenBy = new TreeSet<>();
@@ -94,13 +96,15 @@ public class AlgoElection implements Runnable {
     private void resultat(Message message) {
         waitingForResult = false;
         if (!message.getSites().contains(me)) {
-            if (phase == Phase.RESULT && coordinator != message.getResultByte()) {
+            if (phase == Phase.RESULT && getCoordinator() != message.getResultByte()) {
                 // 2 elections en cours.. redémarre l'élection
                 start();
             } else if (phase == Phase.ANNOUNCE) {
                 // inscrit le résultat de l'élection
-                coordinator = message.getResultByte();
-                System.out.println("Elected site : " + message.getResultByte());
+                synchronized (this) {
+                    coordinator = message.getResultByte();
+                    System.out.println("Elected site : " + message.getResultByte());
+                }
 
                 // s'ajoute à la liste des sites ayant reçu le message, et l'envoie au suivant
                 message.getSites().add(me);
@@ -124,7 +128,9 @@ public class AlgoElection implements Runnable {
      * @return l'élu
      */
     public byte getCoordinator() {
-        return coordinator;
+        synchronized (this) {
+            return coordinator;
+        }
     }
 
     @Override
