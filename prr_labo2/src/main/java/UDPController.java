@@ -37,9 +37,7 @@ public class UDPController {
      */
     public int getAptitude() {
         try {
-            int sock = socket.getPort();
-            int by = InetAddress.getLocalHost().getAddress()[3];
-            return socket.getPort() + InetAddress.getLocalHost().getAddress()[3];
+            return socket.getLocalPort() + InetAddress.getLocalHost().getAddress()[3];
         } catch (UnknownHostException e) {
             e.printStackTrace();
             return -1;
@@ -53,7 +51,7 @@ public class UDPController {
      * @param message     message à transmettre
      */
     public void send(byte destination, Message message) {
-        byte[] array = new byte[1 + message.getSites().size() * 5];
+        byte[] array = new byte[1 + message.getSites().size() * 5 + 1];
         array[0] = message.getMessageType().getByte();
 
         int i = 0;
@@ -64,6 +62,10 @@ public class UDPController {
             array[1 + i * 5 + 3] = (byte) (s.getAptitude() >> 8); // byte 3 aptitude
             array[1 + i * 5 + 4] = (byte) (s.getAptitude()); // byte 4 aptitude
             i++;
+        }
+
+        if (message.getMessageType() == Message.MessageType.RESULT) {
+            array[1 + i * 5] = message.getResultByte();
         }
 
         try {
@@ -79,8 +81,8 @@ public class UDPController {
      * @return Message
      */
     public Message listen() throws IOException {
-        DatagramPacket packet = new DatagramPacket(new byte[1 + Main.getSiteCount() * 5], 1 + Main.getSiteCount() *
-                5);
+        DatagramPacket packet = new DatagramPacket(new byte[1 + Main.getSiteCount() * 5 + 1], 1 + Main.getSiteCount() *
+                5 + 1);
 
         socket.receive(packet);
 
@@ -122,12 +124,18 @@ public class UDPController {
                 e.printStackTrace();
             }
 
-            for (int i = 0; i < (packet.getLength() - 1) / 5; i++) {
+            int endOfSiteList = packet.getLength() - 2;
+            if (Message.MessageType.RESULT == message.getMessageType()) {
+                message.setResultByte(data[packet.getLength() - 1]);
+//                endOfSiteList--;
+            }
+
+            for (int i = 0; i < endOfSiteList / 5; i++) {
                 message.getSites().add(new Site(data[1 + 5 * i],
                         data[1 + 5 * i + 1] << 24
-                        | (data[1 + 5 * i + 2] & 0xFF) << 16
-                        | (data[1 + 5 * i + 3] & 0xFF) << 8
-                        | (data[1 + 5 * i + 4] & 0xFF)));
+                                | (data[1 + 5 * i + 2] & 0xFF) << 16
+                                | (data[1 + 5 * i + 3] & 0xFF) << 8
+                                | (data[1 + 5 * i + 4] & 0xFF)));
             }
         }
 

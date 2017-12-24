@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.net.*;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.Random;
 
 /**
  * Project : prr_labo2
@@ -51,6 +52,7 @@ public class Main {
         new Thread(election).start();
 
         try {
+            Random random = new Random();
             DatagramSocket pingSocket = new DatagramSocket();
             pingSocket.setSoTimeout(PING_TIMEOUT);
             byte[] ping = {Message.MessageType.PING.getByte()};
@@ -63,26 +65,26 @@ public class Main {
                 if (coordinator != num) {
                     // send ping
                     pingSocket.send(new DatagramPacket(ping, ping.length, network.get(coordinator)));
-                    System.out.println("Sent ping");
+//                    System.out.println("Sent ping");
 
                     // wait for pong
                     DatagramPacket pong = new DatagramPacket(new byte[1], 1);
 
                     try {
-                        System.out.println("Waiting for ping response ...");
+//                        System.out.println("Waiting for ping response ...");
                         do {
                             pingSocket.receive(pong);
                         } while (pong.getData()[0] != Message.MessageType.PONG.getByte());
-                        System.out.println("Coordinator " + coordinator + " is alive");
+//                        System.out.println("Coordinator " + coordinator + " is alive");
                     } catch (SocketTimeoutException e) {
                         // Si le pong n'est pas reçu en réponse, lance l'élection
-                        System.out.println("Ping timed out, coordinator " + coordinator + " is dead, starting " +
-                                "election");
-                        election.start();
+//                        System.out.println("Ping timed out, coordinator " + coordinator + " is dead, starting " +
+//                                "election");
+//                        election.start();
                     }
                 }
-                int random = ((int) Math.random() + 2000) % 5000;
-                Thread.sleep(random);
+
+                Thread.sleep(random.nextInt(3000) + 2000);
             }
         } catch (IOException e) {
             e.printStackTrace();

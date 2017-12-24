@@ -27,6 +27,7 @@ public class Message {
 
     private MessageType messageType;
     private SortedSet<Site> sites;
+    private byte resultElect;
 
     public Message(MessageType messageType, SortedSet<Site> sites) {
         this.messageType = messageType;
@@ -41,7 +42,15 @@ public class Message {
         return sites;
     }
 
-    public byte getElu() {
+    public byte getResultByte() {
+        return messageType == MessageType.RESULT ? resultElect : getBestSite();
+    }
+
+    public void setResultByte(byte resultElect) {
+        this.resultElect = resultElect;
+    }
+
+    private byte getBestSite() {
         if (sites.isEmpty()) {
             return -1;
         }
@@ -66,8 +75,8 @@ public class Message {
             }
             string += ">";
         }
-        if (getElu() > -1) {
-            string += " Elu : " + getElu();
+        if (getBestSite() > -1) {
+            string += " Elu : " + getBestSite();
         }
         return string;
     }
