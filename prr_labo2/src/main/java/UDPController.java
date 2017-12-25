@@ -6,17 +6,20 @@ import java.util.TreeSet;
 /**
  * Project : prr_labo2
  * Date : 14.12.17
+ * Authors : Antoine Friant, Michela Zucca
+ * <p>
+ * Classe contrôlant les échanges de messages UDP
  */
 public class UDPController {
-    private static final int SOCKET_TIMEOUT = 200;
+    private static final int SOCKET_TIMEOUT = 200;      // Timeout de réception d'un message en ms
     private DatagramSocket socket;
-    private HashMap<Byte, InetSocketAddress> network; // carnet d'adresses
+    private HashMap<Byte, InetSocketAddress> network;   // Adresses des sites du réseau
 
     /**
      * Construit UDPController à partir de son numéro de site (l'adresse est définie dans sites.properties)
      *
-     * @param siteId
-     * @param network
+     * @param siteId  numéro du site
+     * @param network adresses des sites
      */
     public UDPController(byte siteId, HashMap<Byte, InetSocketAddress> network) {
         this.network = network;
@@ -31,9 +34,9 @@ public class UDPController {
     }
 
     /**
-     * Calcule l'aptitude du site local
+     * Calcule l'aptitude du site local à partir de son numéro de port et du dernier byte de son adresse ip
      *
-     * @return int
+     * @return int aptitude
      */
     public int getAptitude() {
         try {
@@ -52,6 +55,8 @@ public class UDPController {
      */
     public void send(byte destination, Message message) {
         byte[] array = new byte[1 + message.getSites().size() * 5 + 1];
+
+        // Type du message
         array[0] = message.getMessageType().getByte();
 
         int i = 0;
@@ -65,10 +70,12 @@ public class UDPController {
         }
 
         if (message.getMessageType() == Message.MessageType.RESULT) {
+            // Résultat de l'élection
             array[1 + i * 5] = message.getResultByte();
         }
 
         try {
+            // Envoi
             socket.send(new DatagramPacket(array, array.length, network.get(destination)));
         } catch (IOException e) {
             e.printStackTrace();
@@ -79,27 +86,29 @@ public class UDPController {
      * Appel bloquant : renvoie le prochain message reçu.
      *
      * @return Message
+     * @throws SocketTimeoutException si aucune message n'est reçu au bout de SOCKET_TIMEOUT ms
      */
     public Message listen() throws IOException {
         DatagramPacket packet = new DatagramPacket(new byte[1 + Main.getSiteCount() * 5 + 1], 1 + Main.getSiteCount() *
                 5 + 1);
 
+        // attend la réception d'un packet
         socket.receive(packet);
 
         byte[] data = packet.getData();
-
         Message.MessageType type = null;
+
+        // Récupère le type du message
         if (data[0] == Message.MessageType.ANNOUNCE.getByte()) {
             type = Message.MessageType.ANNOUNCE;
         } else if (data[0] == Message.MessageType.RESULT.getByte()) {
             type = Message.MessageType.RESULT;
         } else if (data[0] == Message.MessageType.PONG.getByte()) {
-            // UDPController ne devrait pas recevoir de PONG, car il n'emmet pas de PING
             type = Message.MessageType.PONG;
         } else if (data[0] == Message.MessageType.PING.getByte()) {
             type = Message.MessageType.PING;
 
-            // Répond immédiatement au ping
+            // Répond immédiatement au PINGs
             byte[] array = {Message.MessageType.PONG.getByte()};
             try {
                 socket.send(new DatagramPacket(array, array.length, packet.getSocketAddress()));
@@ -114,9 +123,11 @@ public class UDPController {
 
         Message message = new Message(type, new TreeSet<>());
 
+        // En cas d'annonce ou resultat
         if (message.getMessageType() == Message.MessageType.ANNOUNCE
                 || message.getMessageType() == Message.MessageType.RESULT) {
-            // Envoie une quittance immédiatement
+
+            // Envoie une immédiatement une quittance
             byte[] array = {Message.MessageType.CHECKOUT.getByte()};
             try {
                 socket.send(new DatagramPacket(array, array.length, packet.getSocketAddress()));
@@ -124,13 +135,13 @@ public class UDPController {
                 e.printStackTrace();
             }
 
-            int endOfSiteList = packet.getLength() - 2;
+            // Récupère le résultat de l'élection, le cas échéant
             if (Message.MessageType.RESULT == message.getMessageType()) {
                 message.setResultByte(data[packet.getLength() - 1]);
-//                endOfSiteList--;
             }
 
-            for (int i = 0; i < endOfSiteList / 5; i++) {
+            // Récupère la liste des sites reçus
+            for (int i = 0; i < (packet.getLength() - 2) / 5; i++) {
                 message.getSites().add(new Site(data[1 + 5 * i],
                         data[1 + 5 * i + 1] << 24
                                 | (data[1 + 5 * i + 2] & 0xFF) << 16

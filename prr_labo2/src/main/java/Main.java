@@ -10,15 +10,15 @@ import java.util.Random;
  * Authors : Antoine Friant, Michela Zucca
  * <p>
  * Application interrogeant le site élu. Lance une élection si le site élu est en panne.
- * Les sites doivent être indexés et adressés dans le fichier "sites.properties"
+ * Les sites doivent être adressés dans le fichier "sites.properties", numérotés de 0 à 127
  */
 public class Main {
-    private static final int PING_TIMEOUT = 1000;
-    private static byte siteCount;
+    private static final int PING_TIMEOUT = 1000; // lance une élection si l'élu ne répond pas après PING_TIMEOUT ms
+    private static byte siteCount; // nombre de sites dans le système réparti, maxiumum 127
 
     public static void main(String[] args) {
 
-        // récupération de la liste des serveurs
+        // récupération de la liste des serveurs dans sites.properties
         Properties properties = new Properties();
         HashMap<Byte, InetSocketAddress> network = new HashMap<>();
         try {
@@ -33,7 +33,7 @@ public class Main {
             network.put(Byte.parseByte(name), new InetSocketAddress(address[0], Integer.parseInt(address[1])));
         }
 
-        // lecture des arguments
+        // lecture des argumentsdu programme
         byte num;
         try {
             num = Byte.parseByte(args[0]);
@@ -57,33 +57,29 @@ public class Main {
             pingSocket.setSoTimeout(PING_TIMEOUT);
             byte[] ping = {Message.MessageType.PING.getByte()};
 
-            // lance périodiquement des ping
+            // envoie périodiquement des ping au site élu
             while (true) {
-                byte coordinator = election.getCoordinator();
+                byte coordinator = election.getElectedSite();
                 System.out.println("Coordinator is site " + coordinator);
 
                 if (coordinator != num) {
                     // send ping
                     pingSocket.send(new DatagramPacket(ping, ping.length, network.get(coordinator)));
-//                    System.out.println("Sent ping");
 
                     // wait for pong
                     DatagramPacket pong = new DatagramPacket(new byte[1], 1);
 
                     try {
-//                        System.out.println("Waiting for ping response ...");
                         do {
                             pingSocket.receive(pong);
                         } while (pong.getData()[0] != Message.MessageType.PONG.getByte());
-//                        System.out.println("Coordinator " + coordinator + " is alive");
                     } catch (SocketTimeoutException e) {
                         // Si le pong n'est pas reçu en réponse, lance l'élection
-//                        System.out.println("Ping timed out, coordinator " + coordinator + " is dead, starting " +
-//                                "election");
-                        election.start();
+                        election.startElection();
                     }
                 }
 
+                // attend 2 à 5 secondes avant la prochaine interrogation du site élu
                 Thread.sleep(random.nextInt(3000) + 2000);
             }
         } catch (IOException e) {
@@ -93,6 +89,10 @@ public class Main {
         }
     }
 
+    /**
+     * Renvoie le nombre de sites dans le système réparti
+     * @return nombre de sites
+     */
     public static byte getSiteCount() {
         return siteCount;
     }
