@@ -12,6 +12,9 @@ import java.util.TreeSet;
  * - En cas de reprise de panne d'un site, l'élection continue en excluant le site en panne
  * - En cas de panne d'un site entre la réception d'un message et l'envoi du suivant, l'élection est relancée
  * - En cas de panne de l'élu une nouvelle élection est démarrée
+ *
+ * L'algorithme suppose que la connexion réseau entre les sites est entièrement fiable, et que les sites
+ * sont numérotés dans l'ordre de 0 à numberOfSites - 1, sans "trou".
  */
 public class AlgoElection implements Runnable {
 
@@ -19,9 +22,10 @@ public class AlgoElection implements Runnable {
 
     private static final long CHECKOUT_TIMEOUT = 200; // Timeout de l'attente de quittance en ms
     private static final long ELECTION_TIMEOUT = 2000; // Timeout de l'attente du message de résultat en ms
+    private final byte SITE_COUNT;                    // nombre total de sites
     private Site me;                                // Site courant
     private byte neighbour;                         // Site voisin
-    private byte electedSite;                       // Site élu actuel (accessible par un autre thread !)
+    private byte electedSite;                       // Site élu actuel (accès concurrents => protégé par des synchronised)
     private UDPController udpController;            // Envoi/réception de messages
     private Phase phase;                            // Etape de l'algorithme
     private Message lastSentMessage;                // Dernier message envoyé (pour nouvelle tentative en cas de panne)
@@ -33,8 +37,10 @@ public class AlgoElection implements Runnable {
      * Constructeur
      *
      * @param num numéro du site local
+     * @param udpController contrôleur UDP à utiliser pour les élections
      */
-    public AlgoElection(byte num, UDPController udpController) {
+    public AlgoElection(byte num, UDPController udpController, byte numberOfSites) {
+        this.SITE_COUNT = numberOfSites;
         this.me = new Site(num, udpController.getAptitude());
         this.udpController = udpController;
         this.electedSite = num;
@@ -48,7 +54,7 @@ public class AlgoElection implements Runnable {
         System.out.println("Election start");
 
         // réinitialise le numéro du site voisin (ignore les pannes précédentes)
-        neighbour = (byte) ((me.getNoSite() + 1) % Main.getSiteCount());
+        neighbour = (byte) ((me.getNoSite() + 1) % SITE_COUNT);
 
         // envoie la première annonce
         SortedSet<Site> election = new TreeSet<>();
@@ -61,7 +67,7 @@ public class AlgoElection implements Runnable {
 
     /**
      * Annonce reçue d'un autre site, traitement de l'information.
-     * @param message
+     * @param message annonce à traiter
      */
     private void annoucement(Message message) {
         waitingForResult = true;
@@ -85,7 +91,7 @@ public class AlgoElection implements Runnable {
             message.getSites().add(me);
 
             // réinitialise le numéro du site voisin (ignore les pannes précédentes), puis fait passer l'annonce
-            neighbour = (byte) ((me.getNoSite() + 1) % Main.getSiteCount());
+            neighbour = (byte) ((me.getNoSite() + 1) % SITE_COUNT);
             send(neighbour, message);
             phase = Phase.ANNOUNCE;
         }
@@ -93,7 +99,7 @@ public class AlgoElection implements Runnable {
 
     /**
      * Réception du résultat de l'élection
-     * @param message
+     * @param message résultat à traiter
      */
     private void result(Message message) {
         waitingForResult = false;
@@ -118,15 +124,21 @@ public class AlgoElection implements Runnable {
     }
 
     /**
-     * Envoie un message d'annnonce ou de résultat de façon résistante aux pannes
+     * Envoie un message d'annnonce ou de résultat de façon résistante aux pannes (prépare les timeouts)
      * @param dest numéro du site destinataire
-     * @param message
+     * @param message message à envoyer
      */
     private void send(byte dest, Message message) {
         System.out.println("SEND => " + message.toString() + " to site " + dest);
+
+        // sauvegarde le message s'il faut le renvoyer en cas de panne
         lastSentMessage = message;
+
+        // exige un checkout avant le timeout
         waitingForCheckout = true;
         timeOfLastSentMessage = System.currentTimeMillis();
+
+        // effectue l'envoi
         udpController.send(dest, message);
     }
 
@@ -173,18 +185,21 @@ public class AlgoElection implements Runnable {
                 // vérifie les timeouts
                 if (waitingForCheckout && System.currentTimeMillis() - timeOfLastSentMessage > CHECKOUT_TIMEOUT) {
                     System.out.println("TIMEOUT - Checkout expected but no received, neighbour skipped");
+                    // aucune quittance reçue dans le temps imparti => relance le message au site suivant
 
                     // retire le site en panne de la liste
                     lastSentMessage.getSites().removeIf((s) -> s.getNoSite() == neighbour);
 
                     // saute le site en panne
-                    neighbour = (byte) ((neighbour + 1) % Main.getSiteCount());
+                    neighbour = (byte) ((neighbour + 1) % SITE_COUNT);
 
                     // renvoie le message au site suivant
                     send(neighbour, lastSentMessage);
 
                 } else if (waitingForResult && System.currentTimeMillis() - timeOfLastSentMessage > ELECTION_TIMEOUT) {
                     System.out.println("TIMEOUT - Result expected but no received, restarting election ...");
+
+                    // aucun message de résultat reçu dans le temps imparti => relance l'élection
                     startElection();
                 }
             }

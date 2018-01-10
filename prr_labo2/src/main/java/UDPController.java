@@ -12,6 +12,7 @@ import java.util.TreeSet;
  */
 public class UDPController {
     private static final int SOCKET_TIMEOUT = 200;      // Timeout de réception d'un message en ms
+    private final byte SITE_COUNT;                      // Nombre total de sites
     private DatagramSocket socket;
     private HashMap<Byte, InetSocketAddress> network;   // Adresses des sites du réseau
 
@@ -21,7 +22,8 @@ public class UDPController {
      * @param siteId  numéro du site
      * @param network adresses des sites
      */
-    public UDPController(byte siteId, HashMap<Byte, InetSocketAddress> network) {
+    public UDPController(byte siteId, HashMap<Byte, InetSocketAddress> network, byte numberOfSites) {
+        this.SITE_COUNT = numberOfSites;
         this.network = network;
 
         // ouverture du socket
@@ -89,8 +91,7 @@ public class UDPController {
      * @throws SocketTimeoutException si aucune message n'est reçu au bout de SOCKET_TIMEOUT ms
      */
     public Message listen() throws IOException {
-        DatagramPacket packet = new DatagramPacket(new byte[1 + Main.getSiteCount() * 5 + 1], 1 + Main.getSiteCount() *
-                5 + 1);
+        DatagramPacket packet = new DatagramPacket(new byte[1 + SITE_COUNT * 5 + 1], 1 + SITE_COUNT * 5 + 1);
 
         // attend la réception d'un packet
         socket.receive(packet);

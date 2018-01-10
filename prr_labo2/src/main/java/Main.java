@@ -14,7 +14,6 @@ import java.util.Random;
  */
 public class Main {
     private static final int PING_TIMEOUT = 1000; // lance une élection si l'élu ne répond pas après PING_TIMEOUT ms
-    private static byte siteCount; // nombre de sites dans le système réparti, maxiumum 127
 
     public static void main(String[] args) {
 
@@ -27,34 +26,34 @@ public class Main {
             e.printStackTrace();
             return;
         }
-        siteCount = (byte) properties.stringPropertyNames().size();
+        byte siteCount = (byte) properties.stringPropertyNames().size(); // nombre de sites dans le système réparti, maxiumum 127
         for (String name : properties.stringPropertyNames()) {
             String[] address = properties.getProperty(name).split(":");
             network.put(Byte.parseByte(name), new InetSocketAddress(address[0], Integer.parseInt(address[1])));
         }
 
-        // lecture des argumentsdu programme
+        // lecture des arguments du programme
         byte num;
         try {
             num = Byte.parseByte(args[0]);
         } catch (NumberFormatException e) {
-            System.out.println("Invalid argument, must be the site number in sites.properties (starting " +
+            System.out.println("Invalid argument, must be the site number in sites.properties (numbered " +
                     "from 0 to N-1)");
             return;
         }
 
         // initialise l'élection et le controlleur UDP
-        UDPController udpController = new UDPController(num, network);
-        AlgoElection election = new AlgoElection(num, udpController);
+        UDPController udpController = new UDPController(num, network, siteCount);
+        AlgoElection election = new AlgoElection(num, udpController, siteCount);
 
 
-        // lance l'écoute du réseau
+        // lance l'écoute des élections
         new Thread(election).start();
 
         try {
             Random random = new Random();
             DatagramSocket pingSocket = new DatagramSocket();
-            pingSocket.setSoTimeout(PING_TIMEOUT);
+            pingSocket.setSoTimeout(PING_TIMEOUT); // timeout de la réponse du coordinateur
             byte[] ping = {Message.MessageType.PING.getByte()};
 
             // envoie périodiquement des ping au site élu
@@ -72,9 +71,10 @@ public class Main {
                     try {
                         do {
                             pingSocket.receive(pong);
+                            // ne traite que les messages de type PONG
                         } while (pong.getData()[0] != Message.MessageType.PONG.getByte());
                     } catch (SocketTimeoutException e) {
-                        // Si le pong n'est pas reçu en réponse, lance l'élection
+                        // Si le pong n'est pas reçu en réponse dans le temps imparti, lance l'élection
                         election.startElection();
                     }
                 }
@@ -87,13 +87,5 @@ public class Main {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Renvoie le nombre de sites dans le système réparti
-     * @return nombre de sites
-     */
-    public static byte getSiteCount() {
-        return siteCount;
     }
 }
