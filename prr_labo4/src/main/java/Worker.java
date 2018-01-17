@@ -50,7 +50,7 @@ public class Worker implements Runnable {
         }
     }
 
-    private boolean isRunning() {
+    public boolean isRunning() {
         synchronized (RUNNING_MUTEX) {
             return running;
         }
@@ -71,7 +71,8 @@ public class Worker implements Runnable {
                     }
 
                     // lance un nouveau travail sur le site j
-                    udpController.send(j, new Message(Message.MessageType.REQUETE));
+                    // Todo : ajouter le numéro du site au message
+                    udpController.send(j, new Message(Message.MessageType.REQUETE, udpController.getSiteId()));
                 } else {
                     break;
                 }

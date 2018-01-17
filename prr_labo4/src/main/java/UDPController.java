@@ -49,10 +49,13 @@ public class UDPController {
      * @param message     message à transmettre
      */
     public void send(byte destination, Message message) {
-        byte[] array = new byte[1];
+        // todo : ajouter 1 case au tableau
+        byte[] array = new byte[2];
 
         // Type du message
         array[0] = message.getMessageType().getByte();
+        // todo : ajouter l'origine du message
+        array[1] = message.getOriginSite();
 
         try {
             // Envoi
@@ -88,7 +91,8 @@ public class UDPController {
             System.out.println("Unknown message type received !");
         }
 
-        Message message = new Message(type);
+        //todo : ajouter le numéro du site originaire du message
+        Message message = new Message(type, data[1]);
 
         return message;
     }

@@ -31,14 +31,16 @@ public class Message {
     }
 
     private MessageType messageType;    // type du message
+    private byte originSite;
 
     /**
      * Constructeur
      *
      * @param messageType
      */
-    public Message(MessageType messageType) {
+    public Message(MessageType messageType, byte originSite) {
         this.messageType = messageType;
+        this.originSite = originSite;
     }
 
     /**
@@ -49,6 +51,9 @@ public class Message {
         return messageType;
     }
 
+    public byte getOriginSite(){
+        return originSite;
+    }
 
     /**
      * Convertit le message en String lisible pour l'affichage

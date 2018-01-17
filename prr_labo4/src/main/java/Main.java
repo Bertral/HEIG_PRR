@@ -44,7 +44,8 @@ public class Main {
 
         // initialise l'élection et le controlleur UDP
         UDPController udpController = new UDPController(num, network, siteCount);
-//        AlgoElection election = new AlgoElection(num, udpController, siteCount);
+        Terminaison terminaison = new Terminaison(udpController, num,siteCount);
+        //AlgoElection election = new AlgoElection(num, udpController, siteCount);
 
 
         // lance l'écoute des élections
