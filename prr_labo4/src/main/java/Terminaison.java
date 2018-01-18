@@ -75,12 +75,12 @@ public class Terminaison implements Runnable {
             case FIN:
                 if (moi == msg.getOriginSite()) {
                     System.out.println("Received FIN ");
-                    isRunning.set(false);
                 } else {
                     // Transmet le jeton au voisi
                     System.out.println("Send FIN to "+ neightbour);
                     application.send(neightbour, new Message(Message.MessageType.FIN, msg.getOriginSite()));
                 }
+                isRunning.set(false);
                 break;
         }
     }
