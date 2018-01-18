@@ -51,34 +51,29 @@ public class Main {
 
         System.out.println("Press <n> to new task\nPress <s> to stop");
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Scanner scanner = new Scanner(System.in);
-                scanner.useDelimiter("");
-                while (terminaison.isRunning.get()) {
-                    char response = scanner.next().charAt(0);
-                    if (response == 's') {
-                        System.out.println("Stopping application ...");
-                        terminaison.requestStop();
-                        break;
-                    } else if (response == 'n') {
-                        if (terminaison.isRunning.get()) {
-                            System.out.println("New task create ...");
-                            terminaison.newTask();
-                        } else {
-                            System.out.println("Site stopping, it's not possible");
-                        }
-                    }
-                }
-
-                try {
-                    terminaisonThread.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+        Scanner scanner = new Scanner(System.in);
+        scanner.useDelimiter("");
+        while (terminaison.isRunning.get()) {
+            char response = scanner.next().charAt(0);
+            if (response == 's') {
+                System.out.println("Stopping application ...");
+                terminaison.requestStop();
+                break;
+            } else if (response == 'n') {
+                if (terminaison.isRunning.get()) {
+                    System.out.println("New task create ...");
+                    terminaison.newTask();
+                } else {
+                    System.out.println("Site stopping, it's not possible");
                 }
             }
-        }).start();
+        }
+
+        try {
+            terminaisonThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
 
         System.out.println("Application stopped");

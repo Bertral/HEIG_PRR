@@ -33,20 +33,20 @@ public class Terminaison implements Runnable {
     }
 
     public void requestStop() {
-        if(isRunning.get()) {
+        if (isRunning.get()) {
             travail(new Message(Message.MessageType.JETON, moi));
         }
     }
 
     private void travail(Message msg) {
-        byte neightbour = (byte) ((moi +1) % N);
+        byte neightbour = (byte) ((moi + 1) % N);
 
         switch (msg.getMessageType()) {
             case REQUETE:
-                if(etat != T_Etat.inactif) {
+                if (etat != T_Etat.inactif) {
                     //System.out.println("Received REQUETE to " + msg.getOriginSite());
                     newTask();
-                }else{
+                } else {
                     System.out.println("Impossible to start new Task");
                 }
                 break;
@@ -64,14 +64,12 @@ public class Terminaison implements Runnable {
 
                     for (Worker w : workers) {
                         // attend la fin des threads
-                        if (w.isRunning()) {
-                            w.join(); // rejoint pour attendre qu'il finisse, sinon il ne relancera pas de travail
-                        }
+                        w.join(); // rejoint pour attendre qu'il finisse, sinon il ne relancera pas de travail
                     }
 
                     // Passe en inactif et on transmet le jeton
                     etat = T_Etat.inactif;
-                    System.out.println("Send JETON to " + neightbour + " origin : "+ msg.getOriginSite());
+                    System.out.println("Send JETON to " + neightbour + " origin : " + msg.getOriginSite());
                     application.send(neightbour, new Message(Message.MessageType.JETON, msg.getOriginSite()));
                 }
                 break;
@@ -79,7 +77,7 @@ public class Terminaison implements Runnable {
                 System.out.println("Received FIN, origin : " + msg.getOriginSite());
                 if (moi != msg.getOriginSite()) {
                     // Transmet le jeton au voisi
-                    System.out.println("Send FIN to "+ neightbour);
+                    System.out.println("Send FIN to " + neightbour);
                     application.send(neightbour, new Message(Message.MessageType.FIN, msg.getOriginSite()));
                 }
                 isRunning.set(false);
