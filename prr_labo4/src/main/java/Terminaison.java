@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -7,59 +8,83 @@ import java.util.List;
  * Authors : Antoine Friant, Michela Zucca
  */
 
-public class Terminaison {
+public class Terminaison implements Runnable {
     enum T_Etat {actif, inactif}
 
-    private Message T_message;
-    private T_Etat etat ;
+    private T_Etat etat;
     private byte moi;
     private byte N;
     private UDPController application;
     private List<Worker> workers = new LinkedList<>();
+    boolean isRunning = true;
 
-    public Terminaison(UDPController application, byte proc, byte N){
-        this.etat  = T_Etat.actif;
+    public Terminaison(UDPController application, byte proc, byte N) {
+        this.etat = T_Etat.actif;
         this.moi = proc;
         this.application = application;
         this.N = N;
+        workers.add(new Worker(application));
     }
 
-    public void travail(Message msg){
-        byte neightbours = (byte)( (moi %N) +1);
+    public void newTask() {
+        workers.add(new Worker(application));
+    }
 
-        switch(msg.getMessageType()){
+    public void requestStop() {
+        if(isRunning) {
+            travail(new Message(Message.MessageType.JETON, moi));
+        }
+    }
+
+    private void travail(Message msg) {
+        byte neightbour = (byte) (moi % N);
+
+        switch (msg.getMessageType()) {
             case REQUETE:
-                // TODO faire le travail demandé
                 workers.add(new Worker(application));
                 break;
             case JETON:
-                if(etat == T_Etat.inactif){
+                if (etat == T_Etat.inactif) {
                     // Envoyer fin au voisin
-                    application.send(  neightbours , new Message(Message.MessageType.FIN, moi));
-                }else{
-                    // TODO attendre que le travaille soit terminé
+                    application.send(neightbour, new Message(Message.MessageType.FIN, msg.getOriginSite()));
+                } else {
                     // Vérifier si les workers sont terminés
-                    for(Worker w : workers){
-                       w.requestStop();
-                       if(w.isRunning()){
-                           w.join(); // rejoint pour attendre qu'il finisse, sinon il ne relancera pas de travail
-                       }
+                    for (Worker w : workers) {
+                        // demande l'arrêt
+                        w.requestStop();
                     }
+
+                    for (Worker w : workers) {
+                        // attend la fin des threads
+                        if (w.isRunning()) {
+                            w.join(); // rejoint pour attendre qu'il finisse, sinon il ne relancera pas de travail
+                        }
+                    }
+
                     // Passe en inactif et on transmet le jeton
                     etat = T_Etat.inactif;
-                    application.send( neightbours, new Message(Message.MessageType.JETON, moi));
+                    application.send(neightbour, new Message(Message.MessageType.JETON, msg.getOriginSite()));
                 }
                 break;
             case FIN:
-                if(moi == msg.getOriginSite()){
-                    // TODO terminer
-
-                }
-                else{
+                if (moi == msg.getOriginSite()) {
+                    isRunning = false;
+                } else {
                     // Transmet le jeton au voisin
-                    application.send(neightbours, new Message(Message.MessageType.FIN, moi));
+                    application.send(neightbour, new Message(Message.MessageType.FIN, msg.getOriginSite()));
                 }
                 break;
+        }
+    }
+
+    @Override
+    public void run() {
+        while (isRunning) {
+            try {
+                travail(application.listen());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

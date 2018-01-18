@@ -3,17 +3,16 @@ import java.net.*;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Scanner;
 
 /**
  * Project : prr_labo4
  * Date : 14.12.17
  * Authors : Antoine Friant, Michela Zucca
  * <p>
- * Application interrogeant le site élu. Lance une élection si le site élu est en panne.
  * Les sites doivent être adressés dans le fichier "sites.properties", numérotés de 0 à 127
  */
 public class Main {
-    private static final int PING_TIMEOUT = 1000; // lance une élection si l'élu ne répond pas après PING_TIMEOUT ms
 
     public static void main(String[] args) {
 
@@ -44,11 +43,37 @@ public class Main {
 
         // initialise l'élection et le controlleur UDP
         UDPController udpController = new UDPController(num, network, siteCount);
-        Terminaison terminaison = new Terminaison(udpController, num,siteCount);
-        //AlgoElection election = new AlgoElection(num, udpController, siteCount);
+        final Terminaison terminaison = new Terminaison(udpController, num,siteCount);
 
+        final Thread terminaisonThread = new Thread(terminaison);
+        terminaisonThread.start();
+        terminaison.newTask();
 
-        // lance l'écoute des élections
-        // new Thread(election).start();
+        System.out.println("Enter s to stop");
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Scanner scanner = new Scanner(System.in);
+                if(scanner.nextLine().equals("s")) {
+                    System.out.println("Stopping application ...");
+                    try {
+                        terminaison.requestStop();
+                        terminaisonThread.join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+
+        try {
+            terminaisonThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Application stopped");
+
     }
 }

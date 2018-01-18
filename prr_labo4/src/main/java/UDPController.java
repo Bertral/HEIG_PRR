@@ -49,12 +49,10 @@ public class UDPController {
      * @param message     message à transmettre
      */
     public void send(byte destination, Message message) {
-        // todo : ajouter 1 case au tableau
         byte[] array = new byte[2];
 
         // Type du message
         array[0] = message.getMessageType().getByte();
-        // todo : ajouter l'origine du message
         array[1] = message.getOriginSite();
 
         try {
@@ -72,7 +70,7 @@ public class UDPController {
      * @throws SocketTimeoutException si aucune message n'est reçu au bout de SOCKET_TIMEOUT ms
      */
     public Message listen() throws IOException {
-        DatagramPacket packet = new DatagramPacket(new byte[1], 1);
+        DatagramPacket packet = new DatagramPacket(new byte[2], 2);
 
         // attend la réception d'un packet
         socket.receive(packet);
@@ -91,10 +89,7 @@ public class UDPController {
             System.out.println("Unknown message type received !");
         }
 
-        //todo : ajouter le numéro du site originaire du message
-        Message message = new Message(type, data[1]);
-
-        return message;
+        return new Message(type, data[1]);
     }
 
 }

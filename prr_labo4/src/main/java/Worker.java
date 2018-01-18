@@ -7,7 +7,7 @@ import java.util.Random;
  */
 public class Worker implements Runnable {
     private static final int TASK_MAX_TIME = 500;
-    private static final double TASK_REQUEST_PROBABILITY = 0.25;
+    private static final double TASK_REQUEST_PROBABILITY = 0.5;
 
     private final Object STOP_REQUEST_MUTEX = new Object();
     private final Object RUNNING_MUTEX = new Object();
@@ -61,6 +61,7 @@ public class Worker implements Runnable {
         Random rand = new Random();
         try {
             while (!isStopRequested()) {
+                System.out.println("Working ...");
                 Thread.sleep(rand.nextInt(TASK_MAX_TIME));
 
                 if (!isStopRequested() && rand.nextDouble() < TASK_REQUEST_PROBABILITY) {
@@ -71,9 +72,10 @@ public class Worker implements Runnable {
                     }
 
                     // lance un nouveau travail sur le site j
-                    // Todo : ajouter le numéro du site au message
                     udpController.send(j, new Message(Message.MessageType.REQUETE, udpController.getSiteId()));
+                    System.out.println("Sent task request to " + j);
                 } else {
+                    System.out.println("Task over");
                     break;
                 }
             }
