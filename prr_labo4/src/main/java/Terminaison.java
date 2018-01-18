@@ -74,7 +74,7 @@ public class Terminaison implements Runnable {
                 }
                 break;
             case FIN:
-                System.out.println("Received FIN to " + msg.getOriginSite());
+                System.out.println("Received FIN, origin : " + msg.getOriginSite());
                 if (moi != msg.getOriginSite()) {
                     // Transmet le jeton au voisi
                     System.out.println("Send FIN to "+ neightbour);
@@ -89,6 +89,7 @@ public class Terminaison implements Runnable {
     public void run() {
         while (isRunning.get()) {
             try {
+                System.out.println("lsanfglagsblsgbljadbglj");
                 travail(application.listen());
             } catch (IOException e) {
                 e.printStackTrace();

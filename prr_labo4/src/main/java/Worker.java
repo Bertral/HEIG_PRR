@@ -79,6 +79,10 @@ public class Worker implements Runnable {
                     break;
                 }
             }
+
+            if (isStopRequested()) {
+                System.out.println("Task stopped on request");
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
