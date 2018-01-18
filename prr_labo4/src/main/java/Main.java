@@ -51,15 +51,16 @@ public class Main {
         terminaisonThread.start();
         // todo non terminaison.newTask();
 
-        System.out.println("Enter <n> to new task\nEnter <s> to stop");
+        System.out.println("Press <n> to new task\nPress <s> to stop");
 
         new Thread(new Runnable() {
             @Override
             public void run() {
                 Scanner scanner = new Scanner(System.in);
+                scanner.useDelimiter("");
                 while (true) {
-                    String response = scanner.nextLine();
-                    if (response.equals("s")) {
+                    char response = scanner.next().charAt(0);
+                    if (response == 's') {
                         System.out.println("Stopping application ...");
                         try {
                             terminaison.requestStop();
@@ -68,8 +69,8 @@ public class Main {
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                    } else if (response.equals("n")) {
-                        if (terminaison.isRunning) {
+                    } else if (response == 'n') {
+                        if (terminaison.isRunning.get()) {
                             System.out.println("New task create ...");
                             terminaison.newTask();
                         } else {

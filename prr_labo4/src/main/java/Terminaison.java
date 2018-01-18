@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Project : prr_labo4
@@ -16,14 +17,13 @@ public class Terminaison implements Runnable {
     private byte N;
     private UDPController application;
     private List<Worker> workers = new LinkedList<>();
-    public boolean isRunning = true;
+    public AtomicBoolean isRunning = new AtomicBoolean(true);
 
     public Terminaison(UDPController application, byte proc, byte N) {
         this.etat = T_Etat.actif;
         this.moi = proc;
         this.application = application;
         this.N = N;
-       // workers.add(new Worker(application));
     }
 
     public void newTask() {
@@ -31,7 +31,7 @@ public class Terminaison implements Runnable {
     }
 
     public void requestStop() {
-        if(isRunning) {
+        if(isRunning.get()) {
             travail(new Message(Message.MessageType.JETON, moi));
         }
     }
@@ -41,7 +41,7 @@ public class Terminaison implements Runnable {
 
         switch (msg.getMessageType()) {
             case REQUETE:
-                if(isRunning) {
+                if(isRunning.get()) {
                     System.out.println("Received REQUETE to " + msg.getOriginSite());
                     newTask();
                 }else{
@@ -75,7 +75,7 @@ public class Terminaison implements Runnable {
             case FIN:
                 if (moi == msg.getOriginSite()) {
                     System.out.println("Received FIN ");
-                    isRunning = false;
+                    isRunning.set(false);
                 } else {
                     // Transmet le jeton au voisi
                     System.out.println("Send FIN to "+ neightbour);
@@ -87,7 +87,7 @@ public class Terminaison implements Runnable {
 
     @Override
     public void run() {
-        while (isRunning) {
+        while (isRunning.get()) {
             try {
                 travail(application.listen());
             } catch (IOException e) {
