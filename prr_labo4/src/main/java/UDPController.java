@@ -11,8 +11,8 @@ import java.util.HashMap;
  */
 public class UDPController {
     private final byte SITE_COUNT;                      // Nombre total de sites
-    private byte SITE_ID;
-    private DatagramSocket socket;
+    private byte SITE_ID;                               // Numéro du site local
+    private DatagramSocket socket;                      // Socket UDP local
     private HashMap<Byte, InetSocketAddress> network;   // Adresses des sites du réseau
 
     /**
@@ -43,7 +43,7 @@ public class UDPController {
     }
 
     /**
-     * Envoie un message de 1 byte
+     * Envoie un message de 2 bytes
      *
      * @param destination destinataire du message (numéro de site)
      * @param message     message à transmettre
@@ -68,7 +68,6 @@ public class UDPController {
      * Appel bloquant : renvoie le prochain message reçu.
      *
      * @return Message
-     * @throws SocketTimeoutException si aucune message n'est reçu au bout de SOCKET_TIMEOUT ms
      */
     public Message listen() throws IOException {
         DatagramPacket packet = new DatagramPacket(new byte[2], 2);
@@ -80,12 +79,12 @@ public class UDPController {
         Message.MessageType type = null;
 
         // Récupère le type du message
-        if (data[0] == Message.MessageType.REQUETE.getByte()) {
-            type = Message.MessageType.REQUETE;
-        } else if (data[0] == Message.MessageType.JETON.getByte()) {
-            type = Message.MessageType.JETON;
-        } else if (data[0] == Message.MessageType.FIN.getByte()) {
-            type = Message.MessageType.FIN;
+        if (data[0] == Message.MessageType.REQUEST.getByte()) {
+            type = Message.MessageType.REQUEST;
+        } else if (data[0] == Message.MessageType.TOKEN.getByte()) {
+            type = Message.MessageType.TOKEN;
+        } else if (data[0] == Message.MessageType.END.getByte()) {
+            type = Message.MessageType.END;
         } else {
             System.out.println("Unknown message type received !");
         }

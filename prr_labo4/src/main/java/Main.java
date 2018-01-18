@@ -15,6 +15,17 @@ import java.util.Scanner;
 public class Main {
 
     public static void main(String[] args) {
+        // lecture des arguments du programme
+        byte num;
+        byte siteCount;
+        try {
+            num = Byte.parseByte(args[0]);
+            siteCount = Byte.parseByte(args[1]);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid arguments ! Arguments must be [site_id] [total_number_of_sites]." +
+                    "site_id is the site's number in sites.properties (starts from 0).");
+            return;
+        }
 
         // récupération de la liste des serveurs dans sites.properties
         Properties properties = new Properties();
@@ -26,41 +37,34 @@ public class Main {
             return;
         }
 
-        byte siteCount = Byte.parseByte(args[1]);
+        // remplissage du réseau
         for (String name : properties.stringPropertyNames()) {
             String[] address = properties.getProperty(name).split(":");
             network.put(Byte.parseByte(name), new InetSocketAddress(address[0], Integer.parseInt(address[1])));
         }
 
-        // lecture des arguments du programme
-        byte num;
-        try {
-            num = Byte.parseByte(args[0]);
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid argument, must be the site number in sites.properties (numbered " +
-                    "from 0 to N-1)");
-            return;
-        }
-
-        // initialise l'élection et le controlleur UDP
+        // initialise le controlleur UDP
         UDPController udpController = new UDPController(num, network, siteCount);
-        final Terminaison terminaison = new Terminaison(udpController, num, siteCount);
 
-        final Thread terminaisonThread = new Thread(terminaison);
+        // lance l'algorithme de terminaison
+        Terminaison terminaison = new Terminaison(udpController);
+        Thread terminaisonThread = new Thread(terminaison);
         terminaisonThread.start();
 
-        System.out.println("Press <n> to new task\nPress <s> to stop");
-
+        // lecture et traitement des entrées utilisateur, tant que l'algo de terminaison est actif
+        System.out.println("Enter <n> to new task\nEnter <s> to stop");
         Scanner scanner = new Scanner(System.in);
         scanner.useDelimiter("");
-        while (terminaison.isRunning.get()) {
+        while (terminaison.isRunning()) {
             char response = scanner.next().charAt(0);
             if (response == 's') {
+                // fait une demande d'arrêt
                 System.out.println("Stopping application ...");
                 terminaison.requestStop();
                 break;
             } else if (response == 'n') {
-                if (terminaison.isRunning.get()) {
+                // demande le lancement d'une nouvelle tâche
+                if (terminaison.isRunning()) {
                     System.out.println("New task create ...");
                     terminaison.newTask();
                 } else {
@@ -69,6 +73,7 @@ public class Main {
             }
         }
 
+        // attend la fin du thread de l'algo de terminaison
         try {
             terminaisonThread.join();
         } catch (InterruptedException e) {
