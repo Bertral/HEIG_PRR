@@ -25,8 +25,7 @@ public class Main {
             e.printStackTrace();
             return;
         }
-        //byte siteCount = (byte) properties.stringPropertyNames().size(); // nombre de sites dans le système réparti, maxiumum 127
-        // todo nombre de site immuable, mais définit au démarrage
+
         byte siteCount = Byte.parseByte(args[1]);
         for (String name : properties.stringPropertyNames()) {
             String[] address = properties.getProperty(name).split(":");
@@ -49,7 +48,6 @@ public class Main {
 
         final Thread terminaisonThread = new Thread(terminaison);
         terminaisonThread.start();
-        // todo non terminaison.newTask();
 
         System.out.println("Press <n> to new task\nPress <s> to stop");
 
@@ -58,17 +56,12 @@ public class Main {
             public void run() {
                 Scanner scanner = new Scanner(System.in);
                 scanner.useDelimiter("");
-                while (true) {
+                while (terminaison.isRunning.get()) {
                     char response = scanner.next().charAt(0);
                     if (response == 's') {
                         System.out.println("Stopping application ...");
-                        try {
-                            terminaison.requestStop();
-                            terminaisonThread.join();
-                            break;
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+                        terminaison.requestStop();
+                        break;
                     } else if (response == 'n') {
                         if (terminaison.isRunning.get()) {
                             System.out.println("New task create ...");
@@ -78,14 +71,15 @@ public class Main {
                         }
                     }
                 }
+
+                try {
+                    terminaisonThread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }).start();
 
-        try {
-            terminaisonThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         System.out.println("Application stopped");
 
