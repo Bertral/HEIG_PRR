@@ -61,7 +61,7 @@ public class Worker implements Runnable {
         Random rand = new Random();
         try {
             while (!isStopRequested()) {
-                System.out.println("Working ...");
+                //System.out.println("Working ...");
                 Thread.sleep(rand.nextInt(TASK_MAX_TIME));
 
                 if (!isStopRequested() && rand.nextDouble() < TASK_REQUEST_PROBABILITY) {
