@@ -37,11 +37,16 @@ public class Terminaison implements Runnable {
     }
 
     private void travail(Message msg) {
-        byte neightbour = (byte) (moi % N);
+        byte neightbour = (byte) ((moi +1) % N);
 
         switch (msg.getMessageType()) {
             case REQUETE:
-                newTask();
+                if(isRunning) {
+                    System.out.println("Received REQUETE to " + msg.getOriginSite());
+                    newTask();
+                }else{
+                    System.out.println("Impossible to start new Task");
+                }
                 break;
             case JETON:
                 if (etat == T_Etat.inactif) {
@@ -63,14 +68,17 @@ public class Terminaison implements Runnable {
 
                     // Passe en inactif et on transmet le jeton
                     etat = T_Etat.inactif;
+                    System.out.println("Send JETON to " + neightbour + " origin : "+ msg.getOriginSite());
                     application.send(neightbour, new Message(Message.MessageType.JETON, msg.getOriginSite()));
                 }
                 break;
             case FIN:
                 if (moi == msg.getOriginSite()) {
+                    System.out.println("Received FIN ");
                     isRunning = false;
                 } else {
-                    // Transmet le jeton au voisin
+                    // Transmet le jeton au voisi
+                    System.out.println("Send FIN to "+ neightbour);
                     application.send(neightbour, new Message(Message.MessageType.FIN, msg.getOriginSite()));
                 }
                 break;
