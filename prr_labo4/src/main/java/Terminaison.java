@@ -16,14 +16,14 @@ public class Terminaison implements Runnable {
     private byte N;
     private UDPController application;
     private List<Worker> workers = new LinkedList<>();
-    boolean isRunning = true;
+    public boolean isRunning = true;
 
     public Terminaison(UDPController application, byte proc, byte N) {
         this.etat = T_Etat.actif;
         this.moi = proc;
         this.application = application;
         this.N = N;
-        workers.add(new Worker(application));
+       // workers.add(new Worker(application));
     }
 
     public void newTask() {
@@ -41,7 +41,7 @@ public class Terminaison implements Runnable {
 
         switch (msg.getMessageType()) {
             case REQUETE:
-                workers.add(new Worker(application));
+                newTask();
                 break;
             case JETON:
                 if (etat == T_Etat.inactif) {

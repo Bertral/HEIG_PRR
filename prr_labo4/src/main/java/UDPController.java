@@ -53,6 +53,7 @@ public class UDPController {
 
         // Type du message
         array[0] = message.getMessageType().getByte();
+        // Origine du message
         array[1] = message.getOriginSite();
 
         try {

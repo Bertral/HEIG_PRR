@@ -66,10 +66,12 @@ public class Worker implements Runnable {
 
                 if (!isStopRequested() && rand.nextDouble() < TASK_REQUEST_PROBABILITY) {
                     // choisit un autre site au hasard
+                    // todo à vérifier, mais en anneau envoi au voisin seulement
+                    byte j = (byte)((udpController.getSiteId() % udpController.getSiteCount()) +1);/*
                     byte j = (byte) rand.nextInt(udpController.getSiteCount() - 1);
                     if (j >= udpController.getSiteId()) {
                         j++;
-                    }
+                    }*/
 
                     // lance un nouveau travail sur le site j
                     udpController.send(j, new Message(Message.MessageType.REQUETE, udpController.getSiteId()));

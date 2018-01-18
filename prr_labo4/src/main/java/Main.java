@@ -25,7 +25,9 @@ public class Main {
             e.printStackTrace();
             return;
         }
-        byte siteCount = (byte) properties.stringPropertyNames().size(); // nombre de sites dans le système réparti, maxiumum 127
+        //byte siteCount = (byte) properties.stringPropertyNames().size(); // nombre de sites dans le système réparti, maxiumum 127
+        // todo nombre de site immuable, mais définit au démarrage
+        byte siteCount = Byte.parseByte(args[1]);
         for (String name : properties.stringPropertyNames()) {
             String[] address = properties.getProperty(name).split(":");
             network.put(Byte.parseByte(name), new InetSocketAddress(address[0], Integer.parseInt(address[1])));
@@ -43,25 +45,36 @@ public class Main {
 
         // initialise l'élection et le controlleur UDP
         UDPController udpController = new UDPController(num, network, siteCount);
-        final Terminaison terminaison = new Terminaison(udpController, num,siteCount);
+        final Terminaison terminaison = new Terminaison(udpController, num, siteCount);
 
         final Thread terminaisonThread = new Thread(terminaison);
         terminaisonThread.start();
-        terminaison.newTask();
+        // todo non terminaison.newTask();
 
-        System.out.println("Enter s to stop");
+        System.out.println("Enter <n> to new task\nEnter <s> to stop");
 
         new Thread(new Runnable() {
             @Override
             public void run() {
                 Scanner scanner = new Scanner(System.in);
-                if(scanner.nextLine().equals("s")) {
-                    System.out.println("Stopping application ...");
-                    try {
-                        terminaison.requestStop();
-                        terminaisonThread.join();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                while (true) {
+                    String response = scanner.nextLine();
+                    if (response.equals("s")) {
+                        System.out.println("Stopping application ...");
+                        try {
+                            terminaison.requestStop();
+                            terminaisonThread.join();
+                            break;
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    } else if (response.equals("n")) {
+                        if (terminaison.isRunning) {
+                            System.out.println("New task create ...");
+                            terminaison.newTask();
+                        } else {
+                            System.out.println("Site stopping, it's not possible");
+                        }
                     }
                 }
             }
