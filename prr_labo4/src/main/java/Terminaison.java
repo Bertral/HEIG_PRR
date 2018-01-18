@@ -1,6 +1,8 @@
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -16,7 +18,7 @@ public class Terminaison implements Runnable {
     private byte moi;
     private byte N;
     private UDPController application;
-    private List<Worker> workers = new LinkedList<>();
+    private List<Worker> workers = new CopyOnWriteArrayList<>();
     public AtomicBoolean isRunning = new AtomicBoolean(true);
 
     public Terminaison(UDPController application, byte proc, byte N) {
@@ -89,7 +91,6 @@ public class Terminaison implements Runnable {
     public void run() {
         while (isRunning.get()) {
             try {
-                System.out.println("lsanfglagsblsgbljadbglj");
                 travail(application.listen());
             } catch (IOException e) {
                 e.printStackTrace();
