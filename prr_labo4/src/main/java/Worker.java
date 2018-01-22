@@ -78,7 +78,7 @@ public class Worker implements Runnable {
                     udpController.send(j, new Message(Message.MessageType.REQUEST, udpController.getSiteId()));
                     System.out.println("Sent task request to " + j);
                 } else {
-                    System.out.println("Task over");
+//                    System.out.println("Task over");
                     break;
                 }
             }
